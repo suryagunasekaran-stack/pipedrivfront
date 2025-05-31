@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect, useState } from 'react';
 import Toast from '../components/Toast'; // Import the Toast component
 
@@ -66,6 +66,7 @@ interface ToastState {
 
 export default function PipedriveDataView() {
   const searchParams = useSearchParams();
+  const router = useRouter(); // Initialize useRouter
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
 
@@ -188,6 +189,7 @@ export default function PipedriveDataView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pipedriveDealId: dealId, pipedriveCompanyId: companyId }),
       });
+
       const responseData = await response.json();
       if (!response.ok) {
         throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
@@ -195,6 +197,14 @@ export default function PipedriveDataView() {
       const successMsg = responseData.message || `Xero Quote ${responseData.quoteNumber || ''} created successfully!`;
       setQuoteSuccessMessage(successMsg); // For potential direct display
       showToast('success', 'Quote Created', successMsg);
+
+      // Redirect after a short delay to allow toast to be seen
+      setTimeout(() => {
+        // TODO: Make pipedriveDomain dynamic (e.g., fetch from backend or context)
+        const pipedriveDomain = 'bsei-sandbox.pipedrive.com';
+        router.push(`https://${pipedriveDomain}/deal/${dealId}`);
+      }, 1000); // 1-second delay before redirecting
+
     } catch (e: any) {
       setQuoteError(e.message); // For potential direct display
       showToast('error', 'Quote Creation Error', e.message);
@@ -232,16 +242,15 @@ export default function PipedriveDataView() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 px-2 sm:px-4 flex flex-col items-center">
+      {/* Removed the wrapping div, Toast component will use its own fixed positioning */}
       {toast.show && (
-        <div className="fixed top-4 right-4 z-50 w-full max-w-sm">
-          <Toast
-            show={toast.show}
-            type={toast.type}
-            title={toast.title}
-            message={toast.message}
-            onClose={() => setToast((prev) => ({ ...prev, show: false }))}
-          />
-        </div>
+        <Toast
+          show={toast.show}
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+        />
       )}
 
       {/* Main Data Card */}
