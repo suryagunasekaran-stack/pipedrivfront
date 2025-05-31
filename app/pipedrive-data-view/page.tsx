@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Toast from '../components/Toast'; // Import the Toast component
 
 // Interfaces for the actual fetched data structure
 interface FetchedDealDetails {
@@ -55,6 +56,14 @@ interface FetchedPipedriveData {
   personDetails?: FetchedPersonDetails;
 }
 
+// Toast state type
+interface ToastState {
+  show: boolean;
+  type: 'success' | 'error' | 'info' | 'warning';
+  title: string;
+  message: string;
+}
+
 export default function PipedriveDataView() {
   const searchParams = useSearchParams();
   const dealId = searchParams.get('dealId');
@@ -74,12 +83,29 @@ export default function PipedriveDataView() {
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteSuccessMessage, setQuoteSuccessMessage] = useState<string | null>(null);
 
+  // Toast state
+  const [toast, setToast] = useState<ToastState>({
+    show: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  // Helper function to show toast
+  const showToast = (type: ToastState['type'], title: string, message: string) => {
+    setToast({ show: true, type, title, message });
+    setTimeout(() => {
+      setToast((prev) => ({ ...prev, show: false }));
+    }, 5000); // Auto-hide after 5 seconds
+  };
+
   // Function to fetch Xero connection status
   const fetchXeroStatus = async () => {
     if (!companyId) {
       setXeroStatusError("Pipedrive Company ID is missing to check Xero status.");
       setXeroStatusLoading(false);
       setXeroConnected(false);
+      showToast('error', 'Xero Status Error', 'Pipedrive Company ID is missing.');
       return;
     }
     setXeroStatusLoading(true);
@@ -92,9 +118,15 @@ export default function PipedriveDataView() {
       }
       const xeroData = await response.json();
       setXeroConnected(xeroData.isConnected);
+      if (xeroData.isConnected) {
+        showToast('success', 'Xero Status', 'Successfully connected to Xero.');
+      } else {
+        showToast('info', 'Xero Status', 'Not connected to Xero.');
+      }
     } catch (e: any) {
       setXeroStatusError(e.message);
       setXeroConnected(false);
+      showToast('error', 'Xero Status Error', e.message);
     } finally {
       setXeroStatusLoading(false);
     }
@@ -111,7 +143,7 @@ export default function PipedriveDataView() {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           const result = await response.json();
-          console.log('Fetched Pipedrive data from API:', result); // Updated log message for clarity
+          console.log('Fetched Pipedrive data from API:', result);
           // Map API response to the expected frontend structure
           const transformedData: FetchedPipedriveData = {
             dealDetails: result.deal,
@@ -120,8 +152,10 @@ export default function PipedriveDataView() {
             personDetails: result.person,
           };
           setData(transformedData);
+          showToast('success', 'Data Loaded', 'Pipedrive data loaded successfully.');
         } catch (e: any) {
           setError(e.message);
+          showToast('error', 'Data Load Error', e.message);
         } finally {
           setLoading(false);
         }
@@ -129,8 +163,10 @@ export default function PipedriveDataView() {
 
       fetchData();
     } else {
-      setError('Missing dealId or companyId in query parameters.');
+      const errorMsg = 'Missing dealId or companyId in query parameters.';
+      setError(errorMsg);
       setLoading(false);
+      showToast('error', 'Initialization Error', errorMsg);
     }
   }, [dealId, companyId]);
 
@@ -143,8 +179,10 @@ export default function PipedriveDataView() {
 
   // Function to handle Xero Quote Creation
   const handleCreateXeroQuote = async () => {
-    if (!dealId || !companyId) { // Check dealId directly
-      setQuoteError("Missing Pipedrive Deal ID or Company ID to create a Xero quote.");
+    if (!dealId || !companyId) { 
+      const errorMsg = "Missing Pipedrive Deal ID or Company ID to create a Xero quote.";
+      setQuoteError(errorMsg);
+      showToast('error', 'Quote Creation Error', errorMsg);
       return;
     }
     setQuoteCreating(true);
@@ -166,12 +204,14 @@ export default function PipedriveDataView() {
       if (!response.ok) {
         throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
       }
-      // Assuming the backend now returns a more specific success message or quote details
-      setQuoteSuccessMessage(responseData.message || `Xero Quote ${responseData.quoteNumber || ''} created successfully!`);
+      const successMsg = responseData.message || `Xero Quote ${responseData.quoteNumber || ''} created successfully!`;
+      setQuoteSuccessMessage(successMsg);
+      showToast('success', 'Quote Created', successMsg);
       // Optionally, you might want to re-fetch Pipedrive data if the custom field update is critical to display immediately
       // fetchData(); // Assuming fetchData is the function that gets Pipedrive deal details
     } catch (e: any) {
       setQuoteError(e.message);
+      showToast('error', 'Quote Creation Error', e.message);
     } finally {
       setQuoteCreating(false);
     }
@@ -195,6 +235,15 @@ export default function PipedriveDataView() {
   // New Tailwind CSS template structure
   return (
     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg m-4">
+      {toast.show && (
+        <Toast
+          show={toast.show} // Ensure the show prop is correctly passed
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+        />
+      )}
       <div className="px-4 py-6 sm:px-6">
         <h3 className="text-base/7 font-semibold text-gray-900">Create Quotation in Xero</h3>
         <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">
@@ -239,28 +288,108 @@ export default function PipedriveDataView() {
             <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{data.dealDetails?.currency || 'N/A'}</dd>
           </div>
 
-          {/* Products Information */}
+          {/* Products Information - Table Display */}
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
             <dt className="text-sm/6 font-medium text-gray-900">Products</dt>
             <dd className="mt-2 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
               {data.dealProducts && data.dealProducts.length > 0 ? (
-                <ul role="list" className="divide-y divide-gray-100 rounded-md border border-gray-200">
-                  {data.dealProducts.map((product, index) => (
-                    <li key={product.product_id || index} className="flex items-center justify-between py-4 pr-5 pl-4 text-sm/6">
-                      <div className="flex w-0 flex-1 items-center">
-                        <div className="ml-4 flex min-w-0 flex-1 flex-col">
-                          <span className="truncate font-medium">{product.name || 'N/A'}</span>
-                          <span className="text-xs text-gray-500">
-                            Qty: {product.quantity ?? 'N/A'} &bull; Price: {product.item_price ?? 'N/A'} {data.dealDetails?.currency || ''}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            Discount: {product.discount ?? 'N/A'}{product.discount_type === 'percentage' ? '%' : ''} &bull; Tax: {product.tax ?? 'N/A'} ({product.tax_method || 'N/A'})
-                          </span>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-md">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Tax</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Line Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {data.dealProducts.map((product, index) => {
+                        const quantity = product.quantity ?? 0;
+                        const itemPrice = product.item_price ?? 0;
+                        let discountAmount = 0;
+                        if (product.discount_type === 'percentage') {
+                          discountAmount = (itemPrice * quantity) * ( (product.discount ?? 0) / 100);
+                        } else {
+                          discountAmount = product.discount ?? 0; // Assuming fixed amount if not percentage
+                        }
+                        const priceAfterDiscount = (itemPrice * quantity) - discountAmount;
+                        // Assuming tax is a percentage applied to the price after discount
+                        const taxAmount = priceAfterDiscount * ((product.tax ?? 0) / 100);
+                        const lineTotal = priceAfterDiscount + taxAmount;
+
+                        return (
+                          <tr key={product.product_id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name || 'N/A'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{quantity}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{itemPrice.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                              {product.discount ?? 0}{product.discount_type === 'percentage' ? '%' : (data.dealDetails?.currency || '')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{product.tax ?? 0}%</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{lineTotal.toFixed(2)} {data.dealDetails?.currency || ''}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                     <tfoot>
+                      <tr>
+                        <td colSpan={5} className="px-6 py-3 text-right text-sm font-medium text-gray-700 uppercase">Subtotal</td>
+                        <td className="px-6 py-3 text-right text-sm font-medium text-gray-700">
+                          {data.dealProducts.reduce((acc, product) => {
+                            const quantity = product.quantity ?? 0;
+                            const itemPrice = product.item_price ?? 0;
+                            let discountAmount = 0;
+                            if (product.discount_type === 'percentage') {
+                              discountAmount = (itemPrice * quantity) * ( (product.discount ?? 0) / 100);
+                            } else {
+                              discountAmount = product.discount ?? 0;
+                            }
+                            return acc + (itemPrice * quantity) - discountAmount;
+                          }, 0).toFixed(2)} {data.dealDetails?.currency || ''}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={5} className="px-6 py-3 text-right text-sm font-medium text-gray-700 uppercase">Total Tax</td>
+                        <td className="px-6 py-3 text-right text-sm font-medium text-gray-700">
+                          {data.dealProducts.reduce((acc, product) => {
+                            const quantity = product.quantity ?? 0;
+                            const itemPrice = product.item_price ?? 0;
+                            let discountAmount = 0;
+                            if (product.discount_type === 'percentage') {
+                              discountAmount = (itemPrice * quantity) * ( (product.discount ?? 0) / 100);
+                            } else {
+                              discountAmount = product.discount ?? 0;
+                            }
+                            const priceAfterDiscount = (itemPrice * quantity) - discountAmount;
+                            const taxAmount = priceAfterDiscount * ((product.tax ?? 0) / 100);
+                            return acc + taxAmount;
+                          }, 0).toFixed(2)} {data.dealDetails?.currency || ''}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={5} className="px-6 py-3 text-right text-base font-semibold text-gray-900 uppercase">Total</td>
+                        <td className="px-6 py-3 text-right text-base font-semibold text-gray-900">
+                          {data.dealProducts.reduce((acc, product) => {
+                            const quantity = product.quantity ?? 0;
+                            const itemPrice = product.item_price ?? 0;
+                            let discountAmount = 0;
+                            if (product.discount_type === 'percentage') {
+                              discountAmount = (itemPrice * quantity) * ( (product.discount ?? 0) / 100);
+                            } else {
+                              discountAmount = product.discount ?? 0;
+                            }
+                            const priceAfterDiscount = (itemPrice * quantity) - discountAmount;
+                            const taxAmount = priceAfterDiscount * ((product.tax ?? 0) / 100);
+                            return acc + priceAfterDiscount + taxAmount;
+                          }, 0).toFixed(2)} {data.dealDetails?.currency || ''}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               ) : (
                 <p className="text-sm/6 text-gray-500">No products associated with this deal.</p>
               )}
@@ -269,54 +398,62 @@ export default function PipedriveDataView() {
         </dl>
       </div>
 
-      {/* Xero Connection Status Section */}
+      {/* Xero Integration Section - Combined Status and Actions */}
       <div className="px-4 py-6 sm:px-6 border-t border-gray-200">
-        <h3 className="text-base/7 font-semibold text-gray-900 mb-2">Xero Integration Status</h3>
-        {xeroStatusLoading ? (
-          <p className="mt-1 text-sm/6 text-gray-500">Loading Xero connection status...</p>
-        ) : xeroStatusError ? (
-          <p className="mt-1 text-sm/6 text-red-600">Error: {xeroStatusError}</p>
-        ) : xeroConnected ? (
-          <p className="mt-1 text-sm/6 text-green-600">Xero Connected</p>
-        ) : (
-          <a
-            href={`http://localhost:3000/connect-xero?pipedriveCompanyId=${companyId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Connect to Xero
-          </a>
-        )}
-        {!xeroStatusLoading && companyId && (
-          <button
-            onClick={fetchXeroStatus}
-            className="mt-2 ml-0 sm:ml-4 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Refresh Xero Status
-          </button>
-        )}
-      </div>
+        <div className="flex justify-between items-start">
+          {/* Xero Connection Status Section (Left Aligned) */}
+          <div className="flex-1">
+            <h3 className="text-base/7 font-semibold text-gray-900 mb-2">Xero Integration Status</h3>
+            {xeroStatusLoading ? (
+              <p className="mt-1 text-sm/6 text-gray-500">Loading Xero connection status...</p>
+            ) : xeroStatusError ? (
+              <p className="mt-1 text-sm/6 text-red-600">Error: {xeroStatusError}</p>
+            ) : xeroConnected ? (
+              <p className="mt-1 text-sm/6 text-green-600">Xero Connected</p>
+            ) : (
+              <a
+                href={`http://localhost:3000/connect-xero?pipedriveCompanyId=${companyId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+              >
+                Connect to Xero
+              </a>
+            )}
+            {!xeroStatusLoading && companyId && (
+              <button
+                onClick={fetchXeroStatus}
+                className="mt-2 ml-0 sm:ml-2 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+              >
+                Refresh Xero Status
+              </button>
+            )}
+          </div>
 
-      {/* Create Xero Quote Section */}
-      {data && xeroConnected && (
-        <div className="px-4 py-6 sm:px-6 border-t border-gray-200">
-          <h3 className="text-base/7 font-semibold text-gray-900 mb-2">Xero Actions</h3>
-          <button
-            onClick={handleCreateXeroQuote}
-            disabled={quoteCreating}
-            className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-          >
-            {quoteCreating ? 'Creating Xero Quote...' : 'Create Xero Quote'}
-          </button>
-          {quoteSuccessMessage && (
-            <p className="mt-2 text-sm/6 text-green-600">{quoteSuccessMessage}</p>
-          )}
-          {quoteError && (
-            <p className="mt-2 text-sm/6 text-red-600">Error: {quoteError}</p>
+          {/* Xero Actions Section (Right Aligned) */}
+          {data && xeroConnected && (
+            <div className="ml-4"> {/* Added margin for spacing */}
+              <h3 className="text-base/7 font-semibold text-gray-900 mb-2 text-right">Xero Actions</h3>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleCreateXeroQuote}
+                  disabled={quoteCreating || !data || !xeroConnected}
+                  className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:bg-gray-400"
+                >
+                  {quoteCreating ? 'Creating Xero Quote...' : 'Create Xero Quote'}
+                </button>
+              </div>
+              {/* Messages for quote creation can remain here or be handled by global toast */}
+              {/* {quoteSuccessMessage && (
+                <p className="mt-2 text-sm/6 text-green-600 text-right">{quoteSuccessMessage}</p>
+              )}
+              {quoteError && (
+                <p className="mt-2 text-sm/6 text-red-600 text-right">{quoteError}</p>
+              )} */}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
