@@ -64,6 +64,42 @@ export default function PipedriveDataView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // State for Xero connection
+  const [xeroConnected, setXeroConnected] = useState(false);
+  const [xeroStatusLoading, setXeroStatusLoading] = useState(true);
+  const [xeroStatusError, setXeroStatusError] = useState<string | null>(null);
+
+  // State for Xero Quote Creation
+  const [quoteCreating, setQuoteCreating] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteSuccessMessage, setQuoteSuccessMessage] = useState<string | null>(null);
+
+  // Function to fetch Xero connection status
+  const fetchXeroStatus = async () => {
+    if (!companyId) {
+      setXeroStatusError("Pipedrive Company ID is missing to check Xero status.");
+      setXeroStatusLoading(false);
+      setXeroConnected(false);
+      return;
+    }
+    setXeroStatusLoading(true);
+    setXeroStatusError(null);
+    try {
+      const response = await fetch(`http://localhost:3000/api/xero/status?pipedriveCompanyId=${companyId}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      const xeroData = await response.json();
+      setXeroConnected(xeroData.isConnected);
+    } catch (e: any) {
+      setXeroStatusError(e.message);
+      setXeroConnected(false);
+    } finally {
+      setXeroStatusLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (dealId && companyId) {
       const fetchData = async () => {
@@ -75,8 +111,15 @@ export default function PipedriveDataView() {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           const result = await response.json();
-          console.log('Fetched data:', result); // Keep console.log for debugging
-          setData(result);
+          console.log('Fetched Pipedrive data from API:', result); // Updated log message for clarity
+          // Map API response to the expected frontend structure
+          const transformedData: FetchedPipedriveData = {
+            dealDetails: result.deal,
+            dealProducts: result.products,
+            organizationDetails: result.organization,
+            personDetails: result.person,
+          };
+          setData(transformedData);
         } catch (e: any) {
           setError(e.message);
         } finally {
@@ -90,6 +133,49 @@ export default function PipedriveDataView() {
       setLoading(false);
     }
   }, [dealId, companyId]);
+
+  // Fetch Xero status when companyId is available
+  useEffect(() => {
+    if (companyId) {
+      fetchXeroStatus();
+    }
+  }, [companyId]);
+
+  // Function to handle Xero Quote Creation
+  const handleCreateXeroQuote = async () => {
+    if (!dealId || !companyId) { // Check dealId directly
+      setQuoteError("Missing Pipedrive Deal ID or Company ID to create a Xero quote.");
+      return;
+    }
+    setQuoteCreating(true);
+    setQuoteError(null);
+    setQuoteSuccessMessage(null);
+    try {
+      const response = await fetch('http://localhost:3000/api/xero/create-quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pipedriveDealId: dealId, // Send pipedriveDealId
+          pipedriveCompanyId: companyId,
+        }),
+      });
+
+      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
+      }
+      // Assuming the backend now returns a more specific success message or quote details
+      setQuoteSuccessMessage(responseData.message || `Xero Quote ${responseData.quoteNumber || ''} created successfully!`);
+      // Optionally, you might want to re-fetch Pipedrive data if the custom field update is critical to display immediately
+      // fetchData(); // Assuming fetchData is the function that gets Pipedrive deal details
+    } catch (e: any) {
+      setQuoteError(e.message);
+    } finally {
+      setQuoteCreating(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-6">Loading Pipedrive data...</div>;
@@ -182,6 +268,55 @@ export default function PipedriveDataView() {
           </div>
         </dl>
       </div>
+
+      {/* Xero Connection Status Section */}
+      <div className="px-4 py-6 sm:px-6 border-t border-gray-200">
+        <h3 className="text-base/7 font-semibold text-gray-900 mb-2">Xero Integration Status</h3>
+        {xeroStatusLoading ? (
+          <p className="mt-1 text-sm/6 text-gray-500">Loading Xero connection status...</p>
+        ) : xeroStatusError ? (
+          <p className="mt-1 text-sm/6 text-red-600">Error: {xeroStatusError}</p>
+        ) : xeroConnected ? (
+          <p className="mt-1 text-sm/6 text-green-600">Xero Connected</p>
+        ) : (
+          <a
+            href={`http://localhost:3000/connect-xero?pipedriveCompanyId=${companyId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Connect to Xero
+          </a>
+        )}
+        {!xeroStatusLoading && companyId && (
+          <button
+            onClick={fetchXeroStatus}
+            className="mt-2 ml-0 sm:ml-4 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Refresh Xero Status
+          </button>
+        )}
+      </div>
+
+      {/* Create Xero Quote Section */}
+      {data && xeroConnected && (
+        <div className="px-4 py-6 sm:px-6 border-t border-gray-200">
+          <h3 className="text-base/7 font-semibold text-gray-900 mb-2">Xero Actions</h3>
+          <button
+            onClick={handleCreateXeroQuote}
+            disabled={quoteCreating}
+            className="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+          >
+            {quoteCreating ? 'Creating Xero Quote...' : 'Create Xero Quote'}
+          </button>
+          {quoteSuccessMessage && (
+            <p className="mt-2 text-sm/6 text-green-600">{quoteSuccessMessage}</p>
+          )}
+          {quoteError && (
+            <p className="mt-2 text-sm/6 text-red-600">Error: {quoteError}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
