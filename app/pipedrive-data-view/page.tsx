@@ -200,10 +200,11 @@ export default function PipedriveDataView() {
 
       // Redirect after a short delay to allow toast to be seen
       setTimeout(() => {
-        // TODO: Make pipedriveDomain dynamic (e.g., fetch from backend or context)
-        const pipedriveDomain = 'bsei-sandbox.pipedrive.com';
-        router.push(`https://${pipedriveDomain}/deal/${dealId}`);
-      }, 1000); // 1-second delay before redirecting
+        const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || "app.pipedrive.com"; // Fallback to a default if not set
+        if (data?.dealDetails?.id) {
+          router.push(`https://${pipedriveDomain}/deal/${data.dealDetails.id}`);
+        }
+      }, 2000); // 2-second delay
 
     } catch (e: any) {
       setQuoteError(e.message); // For potential direct display
