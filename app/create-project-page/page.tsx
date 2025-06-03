@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useProjectData, useProjectCreation } from '../hooks/useProjectData';
 import { useProjectRedirect } from '../hooks/useProjectRedirect';
+import { useAuth } from '../hooks/useAuth';
 import ProjectPreflightCheck from '../components/ProjectPreflightCheck';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -19,6 +20,9 @@ export default function CreateProjectPage() {
   const searchParams = useSearchParams();
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
+
+  // Authentication handling
+  const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
 
   // Data fetching
   const { projectData, isLoading, error, refetch } = useProjectData({ dealId, companyId });
@@ -33,6 +37,22 @@ export default function CreateProjectPage() {
   // Result state for redirect handling
   const [currentResult, setCurrentResult] = useState<CreationResult | null>(null);
 
+  // Check authentication on mount
+  useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        const authResponse = await checkAuth(companyId || undefined);
+        if (!authResponse.authenticated) {
+          handleAuthRedirect(authResponse);
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+      }
+    };
+
+    verifyAuth();
+  }, [checkAuth, handleAuthRedirect, companyId]);
+
   // Update current result when creation result changes
   useEffect(() => {
     if (creationResult) {
@@ -46,11 +66,11 @@ export default function CreateProjectPage() {
     onUpdateResult: setCurrentResult,
   });
 
-  // Loading state
-  if (isLoading) {
+  // Loading state (including auth check)
+  if (isLoading || isCheckingAuth) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-[#FEF3EC]">
-        <LoadingSpinner />
+        <LoadingSpinner message={isCheckingAuth ? "Checking authentication..." : "Loading project data..."} />
       </div>
     );
   }

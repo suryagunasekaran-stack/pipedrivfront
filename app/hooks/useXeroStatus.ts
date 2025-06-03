@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { XeroStatus } from '../types/pipedrive';
 import { API_ENDPOINTS } from '../constants';
+import { apiCall } from '../utils/apiClient';
 
 /**
- * Custom hook for managing Xero connection status
+ * Custom hook for managing Xero connection status with authentication handling
  */
 export function useXeroStatus(companyId: string | null) {
   const [xeroConnected, setXeroConnected] = useState(false);
@@ -22,14 +23,7 @@ export function useXeroStatus(companyId: string | null) {
     setError(null);
     
     try {
-      const response = await fetch(`${API_ENDPOINTS.XERO_STATUS}?pipedriveCompanyId=${companyId}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
-      
-      const xeroData: XeroStatus = await response.json();
+      const xeroData: XeroStatus = await apiCall(`${API_ENDPOINTS.XERO_STATUS}?pipedriveCompanyId=${companyId}`);
       setXeroConnected(xeroData.isConnected);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to check Xero status');

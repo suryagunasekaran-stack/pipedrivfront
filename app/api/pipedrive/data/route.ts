@@ -4,6 +4,7 @@ import { EXTERNAL_API_BASE_URL, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '@
 /**
  * GET /api/pipedrive/data
  * Fetches Pipedrive deal data including organization, person, and products
+ * Includes authentication handling with proper redirect responses
  */
 export async function GET(request: NextRequest) {
   try {
@@ -18,15 +19,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: Replace with actual Pipedrive API integration
-    // This is a placeholder for the actual API call
-    const mockResponse = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PIPEDRIVE_DATA}?dealId=${dealId}&companyId=${companyId}`);
+    // Call external API for Pipedrive data
+    const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PIPEDRIVE_DATA}?dealId=${dealId}&companyId=${companyId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        // Forward any cookies or authorization headers
+        'Cookie': request.headers.get('cookie') || '',
+        'Authorization': request.headers.get('authorization') || '',
+      },
+    });
     
-    if (!mockResponse.ok) {
-      throw new Error(`Failed to fetch data: ${mockResponse.status}`);
+    // Handle authentication errors from external API
+    if (response.status === 401) {
+      return NextResponse.json(
+        {
+          authenticated: false,
+          authRequired: 'pipedrive',
+          authUrl: '/auth/pipedrive',
+          message: 'Pipedrive authentication required'
+        },
+        { status: 401 }
+      );
     }
 
-    const data = await mockResponse.json();
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data: ${response.status}`);
+    }
+
+    const data = await response.json();
     return NextResponse.json(data);
 
   } catch (error) {

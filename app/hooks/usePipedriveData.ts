@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { FetchedPipedriveData } from '../types/pipedrive';
 import { API_ENDPOINTS } from '../constants';
+import { apiCall } from '../utils/apiClient';
 
 /**
- * Custom hook for fetching Pipedrive data
+ * Custom hook for fetching Pipedrive data with authentication handling
  */
 export function usePipedriveData(dealId: string | null, companyId: string | null) {
   const [data, setData] = useState<FetchedPipedriveData | null>(null);
@@ -22,13 +23,7 @@ export function usePipedriveData(dealId: string | null, companyId: string | null
       setError(null);
       
       try {
-        const response = await fetch(`${API_ENDPOINTS.PIPEDRIVE_DATA}?dealId=${dealId}&companyId=${companyId}`);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
+        const result = await apiCall(`${API_ENDPOINTS.PIPEDRIVE_DATA}?dealId=${dealId}&companyId=${companyId}`);
         const transformedData: FetchedPipedriveData = {
           dealDetails: result.deal,
           dealProducts: result.products,

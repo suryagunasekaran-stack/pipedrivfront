@@ -4,6 +4,7 @@ import { EXTERNAL_API_BASE_URL, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '@
 /**
  * GET /api/xero/status
  * Checks Xero connection status for a given Pipedrive company
+ * Includes authentication handling
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,15 +18,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: Replace with actual Xero API integration
-    // This is a placeholder for the actual API call
-    const mockResponse = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.XERO_STATUS}?pipedriveCompanyId=${pipedriveCompanyId}`);
+    // Call external API for Xero status
+    const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.XERO_STATUS}?pipedriveCompanyId=${pipedriveCompanyId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        // Forward any cookies or authorization headers
+        'Cookie': request.headers.get('cookie') || '',
+        'Authorization': request.headers.get('authorization') || '',
+      },
+    });
     
-    if (!mockResponse.ok) {
-      throw new Error(`Failed to check Xero status: ${mockResponse.status}`);
+    // Handle authentication errors
+    if (response.status === 401) {
+      return NextResponse.json(
+        {
+          authenticated: false,
+          authRequired: 'pipedrive', // Could be 'xero' depending on the specific error
+          authUrl: '/auth/pipedrive',
+          message: 'Authentication required to check Xero status'
+        },
+        { status: 401 }
+      );
     }
 
-    const data = await mockResponse.json();
+    if (!response.ok) {
+      throw new Error(`Failed to check Xero status: ${response.status}`);
+    }
+
+    const data = await response.json();
     return NextResponse.json(data);
 
   } catch (error) {

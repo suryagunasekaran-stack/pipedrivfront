@@ -17,39 +17,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Replace with actual external API call
-    // For testing purposes, return mock data
-    const mockData = {
-      deal: {
-        id: dealId,
-        title: "Sample Web Development Project",
-        value: 15000,
-        currency: "USD",
-        status: "open"
+    // Forward request to the external API
+    const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PROJECT_CREATE}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      organization: {
-        id: companyId,
-        name: "Acme Corporation",
-        address: "123 Business St, City, State 12345"
-      },
-      person: {
-        id: "person_123",
-        name: "John Smith",
-        email: "john.smith@acme.com",
-        phone: "+1-555-0123"
-      },
-      products: [
-        {
-          id: "prod_1",
-          name: "Web Development",
-          quantity: 1,
-          unit_price: 15000,
-          total: 15000
-        }
-      ]
-    };
+      body: JSON.stringify({ dealId, companyId }),
+    });
 
-    return NextResponse.json(mockData);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
 
   } catch (error) {
     console.error('Error fetching project data:', error);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { XeroQuoteResponse } from '../types/pipedrive';
 import { API_ENDPOINTS, DEFAULT_PIPEDRIVE_DOMAIN, REDIRECT_DELAY } from '../constants';
+import { apiCall } from '../utils/apiClient';
 
 interface XeroQuoteCreatorProps {
   dealId: string | null;
@@ -36,20 +37,13 @@ export default function XeroQuoteCreator({
     setCreating(true);
     
     try {
-      const response = await fetch(API_ENDPOINTS.XERO_QUOTE, {
+      const responseData: XeroQuoteResponse = await apiCall(API_ENDPOINTS.XERO_QUOTE, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           pipedriveDealId: dealId, 
           pipedriveCompanyId: companyId 
         }),
       });
-
-      const responseData: XeroQuoteResponse = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
-      }
       
       const successMsg = responseData.message || 
         `Xero Quote ${responseData.quoteNumber || ''} created successfully!`;

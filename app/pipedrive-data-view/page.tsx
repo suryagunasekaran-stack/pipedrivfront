@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
 import QuotationDetails from '../components/QuotationDetails';
@@ -8,7 +9,9 @@ import XeroIntegration from '../components/XeroIntegration';
 import { usePipedriveData } from '../hooks/usePipedriveData';
 import { useXeroStatus } from '../hooks/useXeroStatus';
 import { useToast } from '../hooks/useToastNew';
+import { useAuth } from '../hooks/useAuth';
 import { ERROR_MESSAGES } from '../constants';
+import SimpleLoader from '../components/SimpleLoader';
 
 /**
  * Main page component for displaying Pipedrive data and Xero integration
@@ -26,6 +29,9 @@ export default function PipedriveDataView() {
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
 
+  // Authentication handling
+  const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
+
   // Custom hooks for data fetching and state management
   const { data, loading, error, refetch } = usePipedriveData(dealId, companyId);
   const { 
@@ -36,9 +42,26 @@ export default function PipedriveDataView() {
   } = useXeroStatus(companyId);
   const toast = useToast();
 
-  // Handle loading state
-  if (loading) {
-    return <LoadingSpinner message="Loading Pipedrive data..." />;
+  // Check authentication on mount
+  useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        const authResponse = await checkAuth(companyId || undefined);
+        if (!authResponse.authenticated) {
+          handleAuthRedirect(authResponse);
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        // Optionally handle auth check failure
+      }
+    };
+
+    verifyAuth();
+  }, [checkAuth, handleAuthRedirect, companyId]);
+
+  // Handle loading state (including auth check)
+  if (loading || isCheckingAuth) {
+    return <SimpleLoader/>;
   }
 
   // Handle error state with retry functionality

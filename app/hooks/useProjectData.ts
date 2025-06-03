@@ -3,8 +3,9 @@
  */
 import { useState, useEffect } from 'react';
 import { ProjectData, CreationResult } from '../types/pipedrive';
-import { EXTERNAL_API_BASE_URL, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '../constants';
+import { API_ENDPOINTS, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '../constants';
 import { useToast } from './useToastNew';
+import { apiCall } from '../utils/apiClient';
 
 interface UseProjectDataProps {
   dealId: string | null;
@@ -37,19 +38,10 @@ export function useProjectData({ dealId, companyId }: UseProjectDataProps): UseP
     setError(null);
     
     try {
-      const response = await fetch(EXTERNAL_API_ENDPOINTS.PROJECT_CREATE, {
+      const responseData = await apiCall(API_ENDPOINTS.PIPEDRIVE_CREATE_PROJECT, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ dealId, companyId }),
       });
-
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
-      }
       
       setProjectData(responseData);
       toast.success('Project data loaded successfully');
@@ -123,20 +115,13 @@ export function useProjectCreation({
     const loadingToastId = toast.loading('Creating project...');
 
     try {
-      const response = await fetch(EXTERNAL_API_ENDPOINTS.PROJECT_CREATE_FULL, {
+      const responseData = await apiCall(API_ENDPOINTS.PROJECT_CREATE_FULL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dealId: projectData.deal.id,
-          companyId: companyId,
+          pipedriveDealId: projectData.deal.id,
+          pipedriveCompanyId: companyId,
         }),
       });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || responseData.error || ERROR_MESSAGES.PROJECT_CREATION_ERROR);
-      }
 
       const successMsg = responseData.message || `Project ${responseData.projectNumber || ''} created successfully! Redirecting...`;
       setCreationResult({

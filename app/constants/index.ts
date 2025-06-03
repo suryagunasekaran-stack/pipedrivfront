@@ -13,8 +13,14 @@ export const EXTERNAL_API_BASE_URL = process.env.EXTERNAL_API_BASE_URL || 'http:
 
 export const API_ENDPOINTS = {
   PIPEDRIVE_DATA: '/api/pipedrive/data',
+  PIPEDRIVE_CREATE_PROJECT: '/api/pipedrive/create-project',
+  PROJECT_CREATE_FULL: '/api/project/create-full',
   XERO_STATUS: '/api/xero/status',
   XERO_QUOTE: '/api/xero/quote',
+  // Authentication endpoints
+  CHECK_AUTH: '/api/auth/check-auth',
+  AUTH_URL: '/api/auth/auth-url',
+  XERO_AUTH_URL: '/api/auth/xero-auth-url',
 } as const;
 
 export const EXTERNAL_API_ENDPOINTS = {
