@@ -69,7 +69,7 @@ export default function CreateProjectPage() {
   // Loading state (including auth check)
   if (isLoading || isCheckingAuth) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-[#FEF3EC]">
+      <div className="flex justify-center items-center min-h-screen bg-white">
         <LoadingSpinner message={isCheckingAuth ? "Checking authentication..." : "Loading project data..."} />
       </div>
     );
@@ -78,7 +78,7 @@ export default function CreateProjectPage() {
   // Error state
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-[#FEF3EC]">
+      <div className="flex justify-center items-center min-h-screen bg-white">
         <ErrorDisplay
           error={error}
           onRetry={refetch}
@@ -90,14 +90,14 @@ export default function CreateProjectPage() {
   // No data state
   if (!projectData) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-[#FEF3EC]">
-        <div className="p-6 text-gray-700">No project data found.</div>
+      <div className="flex justify-center items-center min-h-screen bg-white">
+        <div className="p-6 text-black">No project data found.</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FEF3EC] py-8 px-4 flex flex-col items-center">
+    <div className="min-h-screen bg-white py-8 px-4 flex flex-col items-center">
       <ProjectPreflightCheck
         projectData={projectData}
         isLoading={isLoading}

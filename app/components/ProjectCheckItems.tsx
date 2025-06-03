@@ -35,11 +35,11 @@ export default function ProjectCheckItems({ checkItems }: ProjectCheckItemsProps
             )}
           </div>
           <div className="flex-grow">
-            <span className="font-medium text-[#1F1300]">{item.label}:</span>
+            <span className="font-medium text-black">{item.label}:</span>
             <span className={`ml-1 ${
               item.value 
-                ? 'text-[#1F1300]' 
-                : 'text-[#1F1300] italic opacity-75'
+                ? 'text-black' 
+                : 'text-gray-500 italic opacity-75'
             }`}>
               {item.value || 'Not specified'}
             </span>

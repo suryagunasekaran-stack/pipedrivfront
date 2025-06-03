@@ -35,12 +35,12 @@ export default function ProjectCreationActions({
             <button 
               onClick={onCreateProject}
               disabled={isButtonDisabled}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isCreating ? 'Creating Project...' : 'Confirm & Create Project'}
             </button>
           ) : (
-            <div className="text-sm text-yellow-700 p-4 bg-yellow-50 border border-yellow-200 rounded-md text-center">
+            <div className="text-sm text-gray-700 p-4 bg-gray-50 border border-gray-200 rounded-md text-center">
               <p>
                 Please ensure all required Pipedrive deal information (marked as required) 
                 is complete in Pipedrive and refresh this page to enable project creation.
@@ -53,8 +53,8 @@ export default function ProjectCreationActions({
       {creationResult && (
         <div className={`p-3 rounded text-center ${
           creationResult.success 
-            ? 'bg-green-100 text-green-700' 
-            : 'bg-red-100 text-red-700'
+            ? 'bg-gray-100 text-gray-700' 
+            : 'bg-gray-100 text-gray-700'
         }`}>
           {creationResult.message}
         </div>

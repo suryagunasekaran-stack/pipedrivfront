@@ -53,14 +53,14 @@ export default function Toast({ show, onClose, type, title, message }: ToastProp
                   <Icon aria-hidden="true" className={`size-6 ${iconColor}`} />
                 </div>
                 <div className="ml-3 w-0 flex-1 pt-0.5">
-                  <p className="text-sm font-medium text-gray-900">{title}</p>
-                  {message && <p className="mt-1 text-sm text-gray-500">{message}</p>}
+                  <p className="text-sm font-medium text-black">{title}</p>
+                  {message && <p className="mt-1 text-sm text-gray-600">{message}</p>}
                 </div>
                 <div className="ml-4 flex shrink-0">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    className="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                   >
                     <span className="sr-only">Close</span>
                     <XMarkIcon aria-hidden="true" className="size-5" />

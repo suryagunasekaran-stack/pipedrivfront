@@ -30,10 +30,10 @@ export default function ProjectPreflightCheck({
   const hasValidProjectData = !!projectData?.deal?.id;
 
   return (
-    <div className="w-full max-w-2xl bg-[#F1FFFA] shadow-xl rounded-lg overflow-hidden">
-      <div className="px-6 py-5 bg-[#00916E]">
+    <div className="w-full max-w-2xl bg-white shadow-xl rounded-lg border border-gray-200 overflow-hidden">
+      <div className="px-6 py-5 bg-black">
         <h1 className="text-xl font-semibold text-white">Project Pre-flight Check</h1>
-        <p className="text-sm text-white mt-1">
+        <p className="text-sm text-gray-300 mt-1">
           Verifying deal information before project creation...
         </p>
       </div>

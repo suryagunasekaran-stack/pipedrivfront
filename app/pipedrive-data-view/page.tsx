@@ -81,7 +81,7 @@ export default function PipedriveDataView() {
   if (!data) {
     return (
       <ErrorDisplay 
-        error="No data found. Please check your deal ID and company ID." 
+        error="No data found. Please check your deal ID and company ID."
         onRetry={() => {
           refetch();
           refetchStatus();
@@ -91,7 +91,7 @@ export default function PipedriveDataView() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6 px-2 sm:px-4 flex flex-col items-center">
+    <div className="min-h-screen bg-white py-6 px-2 sm:px-4 flex flex-col items-center">
       {/* Main quotation details card */}
       <QuotationDetails data={data} />
 

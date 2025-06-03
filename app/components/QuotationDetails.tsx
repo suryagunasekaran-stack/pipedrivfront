@@ -10,10 +10,10 @@ interface QuotationDetailsProps {
  */
 export default function QuotationDetails({ data }: QuotationDetailsProps) {
   return (
-    <div className="w-full max-w-5xl bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-      <div className="px-4 py-4 sm:px-6 bg-purple-700">
+    <div className="w-full max-w-5xl bg-white shadow-xl rounded-lg border border-gray-200 overflow-hidden mb-6">
+      <div className="px-4 py-4 sm:px-6 bg-black">
         <h3 className="text-lg leading-6 font-medium text-white">Quotation Details</h3>
-        <p className="mt-1 max-w-2xl text-sm text-purple-200">
+        <p className="mt-1 max-w-2xl text-sm text-gray-300">
           Review the Pipedrive data below. If incorrect, please update in Pipedrive and refresh.
         </p>
       </div>

@@ -32,8 +32,8 @@ export default function XeroIntegration({
   toast
 }: XeroIntegrationProps) {
   return (
-    <div className="w-full max-w-5xl bg-white shadow-xl rounded-lg overflow-hidden p-4 sm:p-6">
-      <h3 className="text-md font-semibold text-gray-800 mb-4">Xero Integration & Actions</h3>
+    <div className="w-full max-w-5xl bg-white shadow-xl rounded-lg border border-gray-200 overflow-hidden p-4 sm:p-6">
+      <h3 className="text-md font-semibold text-black mb-4">Xero Integration & Actions</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Column 1: Xero Connection Status & Connect/Refresh Buttons */}
         <XeroConnectionStatus
@@ -46,7 +46,7 @@ export default function XeroIntegration({
 
         {/* Column 2: Create Xero Quote Button (only if connected) */}
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Available Actions</h4>
+          <h4 className="text-sm font-medium text-black mb-2">Available Actions</h4>
           {data ? (
             <XeroQuoteCreator
               dealId={dealId}
@@ -55,7 +55,7 @@ export default function XeroIntegration({
               toast={toast}
             />
           ) : (
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-600">
               {xeroStatusLoading ? 'Checking Xero connection...' : 'Loading deal data...'}
             </p>
           )}

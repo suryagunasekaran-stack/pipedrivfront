@@ -2,7 +2,7 @@
  * Application constants and configuration
  */
 
-export const TOAST_AUTO_HIDE_DELAY = 5000; // 5 seconds
+export const TOAST_AUTO_HIDE_DELAY = 2000; // 5 seconds
 
 export const REDIRECT_DELAY = 2000; // 2 seconds
 

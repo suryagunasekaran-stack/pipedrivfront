@@ -12,7 +12,7 @@ interface ProductTableProps {
 export default function ProductTable({ products, currency }: ProductTableProps) {
   if (!products || products.length === 0) {
     return (
-      <p className="text-sm text-gray-500">No products associated with this deal.</p>
+      <p className="text-sm text-gray-600">No products associated with this deal.</p>
     );
   }
 
@@ -21,24 +21,24 @@ export default function ProductTable({ products, currency }: ProductTableProps) 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+        <thead className="bg-black">
           <tr>
-            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-white uppercase tracking-wider">
               Product
             </th>
-            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-white uppercase tracking-wider">
               Qty
             </th>
-            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-white uppercase tracking-wider">
               Unit Price
             </th>
-            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-white uppercase tracking-wider">
               Discount
             </th>
-            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-white uppercase tracking-wider">
               Tax
             </th>
-            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-white uppercase tracking-wider">
               Line Total
             </th>
           </tr>
@@ -51,22 +51,22 @@ export default function ProductTable({ products, currency }: ProductTableProps) 
 
             return (
               <tr key={product.product_id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-black">
                   {product.name || 'N/A'}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-right">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-black text-right">
                   {quantity}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-right">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-black text-right">
                   {formatCurrency(itemPrice)}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-right">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-black text-right">
                   {product.discount ?? 0}{product.discount_type === 'percentage' ? '%' : ` ${currency || ''}`}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-right">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-black text-right">
                   {product.tax ?? 0}%
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 text-right">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-black text-right">
                   {formatCurrency(calculations.lineTotal, currency)}
                 </td>
               </tr>
@@ -75,26 +75,26 @@ export default function ProductTable({ products, currency }: ProductTableProps) 
         </tbody>
         <tfoot className="bg-gray-50">
           <tr>
-            <td colSpan={5} className="px-4 py-2 text-right text-sm font-medium text-gray-700 uppercase">
+            <td colSpan={5} className="px-4 py-2 text-right text-sm font-medium text-black uppercase">
               Subtotal
             </td>
-            <td className="px-4 py-2 text-right text-sm font-medium text-gray-700">
+            <td className="px-4 py-2 text-right text-sm font-medium text-black">
               {formatCurrency(summary.subtotal, currency)}
             </td>
           </tr>
           <tr>
-            <td colSpan={5} className="px-4 py-2 text-right text-sm font-medium text-gray-700 uppercase">
+            <td colSpan={5} className="px-4 py-2 text-right text-sm font-medium text-black uppercase">
               Total Tax
             </td>
-            <td className="px-4 py-2 text-right text-sm font-medium text-gray-700">
+            <td className="px-4 py-2 text-right text-sm font-medium text-black">
               {formatCurrency(summary.totalTax, currency)}
             </td>
           </tr>
           <tr>
-            <td colSpan={5} className="px-4 py-2 text-right text-base font-semibold text-gray-900 uppercase">
+            <td colSpan={5} className="px-4 py-2 text-right text-base font-semibold text-black uppercase">
               Total
             </td>
-            <td className="px-4 py-2 text-right text-base font-semibold text-gray-900">
+            <td className="px-4 py-2 text-right text-base font-semibold text-black">
               {formatCurrency(summary.grandTotal, currency)}
             </td>
           </tr>

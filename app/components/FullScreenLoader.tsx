@@ -14,7 +14,7 @@ const FullScreenLoader: React.FC = () => {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: '#8b5cf6', // Purple background
+      backgroundColor: '#000000', // Black background
       zIndex: 9999,
       flexDirection: 'column',
     }}>

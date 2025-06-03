@@ -32,8 +32,8 @@ export const useToast = () => {
       icon: '⚠️',
       duration: duration || 4000,
       style: {
-        background: '#f59e0b',
-        color: '#fff',
+        background: '#000000',
+        color: '#ffffff',
       },
     });
   };

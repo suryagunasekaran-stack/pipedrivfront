@@ -50,22 +50,22 @@ export default function RootLayout({
             className: '',
             duration: 4000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: '#000000',
+              color: '#ffffff',
             },
             // Default options for specific types
             success: {
               duration: 3000,
               iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
+                primary: '#000000',
+                secondary: '#ffffff',
               },
             },
             error: {
               duration: 5000,
               iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+                primary: '#000000',
+                secondary: '#ffffff',
               },
             },
             loading: {

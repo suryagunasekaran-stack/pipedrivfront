@@ -66,7 +66,7 @@ export default function XeroQuoteCreator({
 
   if (!xeroConnected) {
     return (
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-gray-600">
         Connect to Xero to enable quote creation.
       </p>
     );
@@ -76,7 +76,7 @@ export default function XeroQuoteCreator({
     <button
       onClick={handleCreateQuote}
       disabled={creating}
-      className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:bg-gray-400"
+      className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:bg-gray-400 transition-colors"
     >
       {creating ? 'Creating Xero Quote...' : 'Create Xero Quote'}
     </button>
