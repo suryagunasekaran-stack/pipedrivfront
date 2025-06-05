@@ -11,8 +11,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { pipedriveDealId, xeroQuoteNumber, pipedriveCompanyId } = body;
 
-    console.log('Request body:', body);
-
     if (!pipedriveDealId || !pipedriveCompanyId) {
       return NextResponse.json(
         { error: 'Missing required parameters: pipedriveDealId and pipedriveCompanyId' },
