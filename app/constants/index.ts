@@ -11,26 +11,9 @@ export const DEFAULT_PIPEDRIVE_DOMAIN = "app.pipedrive.com";
 // External API base URL - should be moved to environment variables in production
 export const EXTERNAL_API_BASE_URL = process.env.EXTERNAL_API_BASE_URL || 'http://localhost:3000';
 
-export const API_ENDPOINTS = {
-  PIPEDRIVE_DATA: '/api/pipedrive/data',
-  PIPEDRIVE_CREATE_PROJECT: '/api/pipedrive/create-project',
-  PROJECT_CREATE_FULL: '/api/project/create-full',
-  XERO_STATUS: '/api/xero/status',
-  XERO_QUOTE: '/api/xero/quote',
-  // Authentication endpoints
-  CHECK_AUTH: '/api/auth/check-auth',
-  AUTH_URL: '/api/auth/auth-url',
-  XERO_AUTH_URL: '/api/auth/xero-auth-url',
-} as const;
-
-export const EXTERNAL_API_ENDPOINTS = {
-  PIPEDRIVE_DATA: '/api/pipedrive-data',
-  XERO_STATUS: '/api/xero/status',
-  XERO_QUOTE: '/api/xero/create-quote',
-  XERO_CONNECT: '/connect-xero',
-  PROJECT_CREATE: '/api/pipedrive/create-project',
-  PROJECT_CREATE_FULL: '/api/project/create-full',
-} as const;
+// API_ENDPOINTS and EXTERNAL_API_ENDPOINTS are largely deprecated as apiService.ts hardcodes paths.
+// Keeping them for now in case any minor utility still refers to them, but they should be phased out.
+// For example, apiService.getPipedriveData uses `${this.baseUrl}/api/pipedrive-data` directly.
 
 export const TOAST_TYPES = {
   SUCCESS: 'success',

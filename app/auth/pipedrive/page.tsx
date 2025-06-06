@@ -1,35 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+// No longer need useRouter from 'next/navigation' for this page's logic if redirect is window.location.href
+// import { useRouter } from 'next/navigation';
+import { apiService, ApiError } from '../../services/api'; // Updated import for ApiError
+// useAuthStore is not directly used for initiating Pipedrive auth on this page.
+// It will be used on callback/success pages.
 
 export default function PipedriveAuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  // const router = useRouter(); // Not used currently
 
   const handleConnect = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch the Pipedrive OAuth URL
-      const response = await fetch('/api/auth/auth-url');
-      
-      if (!response.ok) {
-        throw new Error('Failed to get authorization URL');
-      }
-
-      const data = await response.json();
-      
-      if (data.authUrl) {
+      const response = await apiService.getPipedriveAuthUrl();
+      if (response.authUrl) {
         // Redirect to Pipedrive OAuth
-        window.location.href = data.authUrl;
+        window.location.href = response.authUrl;
       } else {
         throw new Error('No authorization URL received');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect to Pipedrive');
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred while connecting to Pipedrive');
+      }
       setLoading(false);
     }
   };

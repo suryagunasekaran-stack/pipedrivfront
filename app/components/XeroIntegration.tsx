@@ -1,64 +1,68 @@
+// Keep FetchedPipedriveData if XeroQuoteCreator or other parts still need it.
+// However, XeroQuoteCreator will primarily need dealId and companyId.
+import type { PipedriveDataResponse } from '../services/api'; // Assuming this is the type for pipedriveDealData
 import XeroConnectionStatus from './XeroConnectionStatus';
 import XeroQuoteCreator from './XeroQuoteCreator';
-import { FetchedPipedriveData } from '../types/pipedrive';
 
 interface XeroIntegrationProps {
-  dealId: string | null;
-  companyId: string | null;
-  data: FetchedPipedriveData | null;
-  xeroConnected: boolean;
-  xeroStatusLoading: boolean;
-  xeroStatusError: string | null;
-  onRefreshStatus: () => void;
-  toast: {
+  companyId: string | null; // Still needed for XeroConnectionStatus and XeroQuoteCreator
+  dealId: string | null;    // Needed for XeroQuoteCreator
+  pipedriveDealData: PipedriveDataResponse | null; // Pass the whole deal data if needed by XeroQuoteCreator for context
+
+  // Props for XeroConnectionStatus are now largely handled by useAuthStore within the component itself.
+  // onRefreshXeroStatus is now handled by XeroConnectionStatus internally using useAuthStore.
+
+  // Props for XeroQuoteCreator:
+  isXeroConnected: boolean; // This should come from useAuthStore, passed from parent page
+  isCreatingQuote: boolean;
+  onCreateXeroQuote: () => Promise<void>; // The actual function to call apiService.createQuote
+
+  toast: { // Toast is still useful for feedback
     success: (message: string, duration?: number) => string;
     error: (message: string, duration?: number) => string;
-    info: (message: string, duration?: number) => string;
-    warning: (message: string, duration?: number) => string;
+    // Add other toast types if used by XeroQuoteCreator
   };
 }
 
 /**
- * Component for managing Xero integration features
+ * Component for managing Xero integration features.
+ * It now relies more on parent page (PipedriveDataViewContent) for state like isXeroConnected
+ * and for the actual quote creation function.
  */
 export default function XeroIntegration({
-  dealId,
   companyId,
-  data,
-  xeroConnected,
-  xeroStatusLoading,
-  xeroStatusError,
-  onRefreshStatus,
+  dealId,
+  pipedriveDealData,
+  isXeroConnected, // True status from useAuthStore, passed by PipedriveDataViewContent
+  isCreatingQuote,
+  onCreateXeroQuote,
   toast
 }: XeroIntegrationProps) {
   return (
-    <div className="w-full max-w-5xl bg-white shadow-xl rounded-lg border border-gray-200 overflow-hidden p-4 sm:p-6">
-      <h3 className="text-md font-semibold text-black mb-4">Xero Integration & Actions</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        {/* Column 1: Xero Connection Status & Connect/Refresh Buttons */}
-        <XeroConnectionStatus
-          companyId={companyId}
-          xeroConnected={xeroConnected}
-          loading={xeroStatusLoading}
-          error={xeroStatusError}
-          onRefreshStatus={onRefreshStatus}
-        />
+    <div className="w-full mt-8 bg-white shadow sm:rounded-lg">
+      <div className="px-4 py-5 sm:p-6">
+        <h3 className="text-lg font-medium leading-6 text-gray-900">Xero Integration & Actions</h3>
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* Column 2: Create Xero Quote Button (only if connected) */}
-        <div>
-          <h4 className="text-sm font-medium text-black mb-2">Available Actions</h4>
-          {data ? (
-            <XeroQuoteCreator
-              dealId={dealId}
-              companyId={companyId}
-              xeroConnected={xeroConnected}
-              toast={toast}
-            />
-          ) : (
-            <p className="mt-1 text-sm text-gray-600">
-              {xeroStatusLoading ? 'Checking Xero connection...' : 'Loading deal data...'}
-            </p>
-          )}
+          <XeroConnectionStatus companyId={companyId} />
+
+          <div>
+            <h4 className="text-md font-medium text-gray-700 mb-2">Quote Actions</h4>
+            {pipedriveDealData ? ( // Ensure data is present before allowing quote creation attempt
+              <XeroQuoteCreator
+                dealId={dealId}
+                companyId={companyId}
+                isXeroConnected={isXeroConnected} // Pass the reliable connected status
+                onCreateQuote={onCreateXeroQuote} // Pass the actual creation function
+                isCreatingQuote={isCreatingQuote} // Pass loading state for the button
+                toast={toast}
+              />
+            ) : (
+              <p className="mt-1 text-sm text-gray-600">
+                Deal data must be loaded to perform Xero actions.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

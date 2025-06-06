@@ -1,18 +1,22 @@
 /**
  * Main component for the project preflight check interface
  */
-import { ProjectData, CreationResult } from '../types/pipedrive';
+// Ensure ProjectData and CreationResult types are aligned with what's passed from the page
+// ProjectData here is likely PipedriveDataResponse (aliased as ProjectContextData in the hook)
+// CreationResult is CreateProjectResponse
+import type { PipedriveDataResponse } from '../services/api';
+import type { CreateProjectResponse } from '../services/api';
 import ProjectCheckItems from './ProjectCheckItems';
 import ProjectCreationActions from './ProjectCreationActions';
-import { validateProjectData } from '../utils/projectValidation';
+import { validateProjectData } from '../utils/projectValidation'; // This util might need to accept PipedriveDataResponse
 
 interface ProjectPreflightCheckProps {
-  projectData: ProjectData | null;
-  isLoading: boolean;
-  error: string | null;
-  isCreating: boolean;
-  creationResult: CreationResult | null;
-  onCreateProject: () => void;
+  projectData: PipedriveDataResponse | null; // Updated type
+  isLoading: boolean; // Loading initial data
+  error: string | null; // Error loading initial data
+  isCreating: boolean; // Actively creating project
+  creationResult: CreateProjectResponse | null; // Updated type
+  onCreateProject: (params: { existingProjectNumberToLink?: string }) => void; // Updated signature
 }
 
 /**
@@ -26,6 +30,7 @@ export default function ProjectPreflightCheck({
   creationResult,
   onCreateProject,
 }: ProjectPreflightCheckProps) {
+  // validateProjectData needs to be compatible with PipedriveDataResponse
   const { checkItems, allChecksPassed } = validateProjectData(projectData);
   const hasValidProjectData = !!projectData?.deal?.id;
 
@@ -39,16 +44,17 @@ export default function ProjectPreflightCheck({
       </div>
       
       <div className="p-6">
+        {/* ProjectCheckItems might need projectData prop type updated too if it uses specific fields */}
         <ProjectCheckItems checkItems={checkItems} />
         
         <ProjectCreationActions
           allChecksPassed={allChecksPassed}
           isCreating={isCreating}
-          isLoading={isLoading}
-          error={error}
+          isLoading={isLoading} // Pass loading state for initial data
+          error={error} // Pass error state for initial data
           hasValidProjectData={hasValidProjectData}
           creationResult={creationResult}
-          onCreateProject={onCreateProject}
+          onCreateProject={onCreateProject} // Pass the function with updated signature
         />
       </div>
     </div>
