@@ -1,4 +1,4 @@
-import { EXTERNAL_API_BASE_URL, EXTERNAL_API_ENDPOINTS } from '../constants';
+import { API_BASE_URL } from '../constants';
 
 interface XeroConnectionStatusProps {
   companyId: string | null;
@@ -50,9 +50,7 @@ export default function XeroConnectionStatus({
     <div className="mt-3 flex flex-col sm:flex-row gap-2">
       {!xeroConnected && !loading && companyId && (
         <a
-          href={`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.XERO_CONNECT}?pipedriveCompanyId=${companyId}`}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`${API_BASE_URL}/auth/connect-xero?pipedriveCompanyId=${companyId}`}
           className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
         >
           Connect to Xero

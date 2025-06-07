@@ -2,17 +2,27 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { initializeAuthFlowHandler } from '../../../utils/autoAuthFlow';
 
 function PipedriveSuccessContent() {
   const [companyInfo, setCompanyInfo] = useState<any>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // You can fetch company info here if needed
-    // For now, we'll just show a success message
+    // Get company info from URL parameters
     const company = searchParams.get('company');
     if (company) {
       setCompanyInfo({ name: decodeURIComponent(company) });
+    }
+
+    // Initialize auto auth flow handler
+    initializeAuthFlowHandler();
+    
+    // Check if we should auto-redirect
+    const shouldRedirect = sessionStorage.getItem('authFlowContext');
+    if (shouldRedirect) {
+      setIsRedirecting(true);
     }
   }, [searchParams]);
 
@@ -59,20 +69,36 @@ function PipedriveSuccessContent() {
               </span>
             )}
           </p>
+
+          {isRedirecting && (
+            <div className="mb-6">
+              <div className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-md">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+                <span className="text-blue-800 text-sm">
+                  Redirecting you back to your previous action...
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-4">
-          <button
-            onClick={handleClose}
-            className="w-full py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
-          >
-            Continue
-          </button>
-        </div>
+        {!isRedirecting && (
+          <div className="space-y-4">
+            <button
+              onClick={handleClose}
+              className="w-full py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        )}
 
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            You can now close this window or continue to the application
+            {isRedirecting 
+              ? 'Please wait while we redirect you...'
+              : 'You can now close this window or continue to the application'
+            }
           </p>
         </div>
       </div>

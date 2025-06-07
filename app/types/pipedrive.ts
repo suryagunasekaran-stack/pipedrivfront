@@ -78,6 +78,8 @@ export interface PipedriveDealForProject {
   person: any;
   id?: number;
   title?: string;
+  currency?: string;
+  value?: number;
   department?: string;
   org_id?: { name?: string };
   person_id?: { name?: string };
@@ -90,6 +92,11 @@ export interface ProjectData {
   message: string;
   deal: PipedriveDealForProject;
   xeroQuoteNumber: string | null;
+  projectNumber?: string;
+  organization?: any;
+  person?: any;
+  products?: any[];
+  xero?: { projectCreated?: boolean };
 }
 
 export interface CheckItem {

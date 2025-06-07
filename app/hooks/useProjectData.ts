@@ -2,10 +2,10 @@
  * Custom hook for managing project creation data and state
  */
 import { useState, useEffect } from 'react';
-import { ProjectData, CreationResult } from '../types/pipedrive';
-import { API_ENDPOINTS, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '../constants';
+import { ProjectData, CreationResult, PipedriveDealForProject } from '../types/pipedrive';
+import { ERROR_MESSAGES } from '../constants';
 import { useToast } from './useToastNew';
-import { apiCall } from '../utils/apiClient';
+import { apiService } from '../services/api';
 
 interface UseProjectDataProps {
   dealId: string | null;
@@ -38,14 +38,35 @@ export function useProjectData({ dealId, companyId }: UseProjectDataProps): UseP
     setError(null);
     
     try {
-      const responseData = await apiCall(API_ENDPOINTS.PIPEDRIVE_CREATE_PROJECT, {
-        method: 'POST',
-        body: JSON.stringify({ dealId, companyId }),
-      });
+      // Use the new API service to fetch Pipedrive data for project creation
+      const responseData = await apiService.getPipedriveData(companyId, dealId);
       
-      setProjectData(responseData);
+      // Transform the response to match ProjectData interface
+      const transformedDeal: PipedriveDealForProject = {
+        id: responseData.deal.id,
+        title: responseData.deal.title,
+        org_name: responseData.deal.org_id?.name || responseData.organization?.name,
+        organization: responseData.organization,
+        person_name: responseData.deal.person_id?.name || responseData.person?.name,
+        person: responseData.person,
+        department: responseData.deal.department,
+        org_id: responseData.deal.org_id,
+        person_id: responseData.deal.person_id,
+        vessel_name: responseData.deal.vessel_name,
+        location: responseData.deal.location,
+        sales_in_charge: responseData.deal.sales_in_charge,
+      };
+      
+      const transformedData: ProjectData = {
+        message: 'Project data loaded successfully',
+        deal: transformedDeal,
+        xeroQuoteNumber: responseData.deal.xero_quote_number || null,
+      };
+      
+      setProjectData(transformedData);
       toast.success('Project data loaded successfully');
     } catch (e: any) {
+      console.error('Failed to fetch project data:', e);
       const errorMsg = e.message || 'Failed to fetch project data';
       setError(errorMsg);
       toast.error(errorMsg);
@@ -115,25 +136,25 @@ export function useProjectCreation({
     const loadingToastId = toast.loading('Creating project...');
 
     try {
-      const responseData = await apiCall(API_ENDPOINTS.PROJECT_CREATE_FULL, {
-        method: 'POST',
-        body: JSON.stringify({
-          pipedriveDealId: projectData.deal.id,
-          pipedriveCompanyId: companyId,
-        }),
+      // Use the new API service to create the project
+      const responseData = await apiService.createProject({
+        pipedriveDealId: String(projectData.deal.id),
+        pipedriveCompanyId: companyId,
+        existingProjectNumberToLink: projectData.xeroQuoteNumber || undefined,
       });
 
-      const successMsg = responseData.message || `Project ${responseData.projectNumber || ''} created successfully! Redirecting...`;
+      const successMsg = `Project ${responseData.projectNumber || ''} created successfully! Redirecting...`;
       setCreationResult({
         success: true,
         message: successMsg,
         projectNumber: responseData.projectNumber,
-        pipedriveDealId: responseData.pipedriveDealId || responseData.dealId || String(projectData.deal.id),
+        pipedriveDealId: responseData.metadata?.dealId || String(projectData.deal.id),
       });
       toast.dismiss(loadingToastId);
       toast.success(successMsg);
 
     } catch (e: any) {
+      console.error('Failed to create project:', e);
       const errorMsg = e.message || "An unexpected error occurred.";
       setCreationResult({ 
         success: false, 

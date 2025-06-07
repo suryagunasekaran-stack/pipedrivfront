@@ -1,15 +1,10 @@
 import { useState, useCallback } from 'react';
-
-interface AuthResponse {
-  authenticated: boolean;
-  authRequired?: 'pipedrive' | 'xero';
-  authUrl?: string;
-  message?: string;
-}
+import { apiService } from '../services/api';
+import { AuthStatusResponse } from '../types/api';
 
 interface UseAuthReturn {
-  checkAuth: (companyId?: string) => Promise<AuthResponse>;
-  handleAuthRedirect: (authResponse: AuthResponse) => void;
+  checkAuth: (companyId?: string) => Promise<AuthStatusResponse>;
+  handleAuthRedirect: (authResponse: AuthStatusResponse) => void;
   isCheckingAuth: boolean;
 }
 
@@ -19,38 +14,43 @@ interface UseAuthReturn {
 export function useAuth(): UseAuthReturn {
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
 
-  const checkAuth = useCallback(async (companyId?: string): Promise<AuthResponse> => {
+  const checkAuth = useCallback(async (companyId?: string): Promise<AuthStatusResponse> => {
+    if (!companyId) {
+      return {
+        authenticated: false,
+        services: { pipedrive: false, xero: false },
+        companyId: '',
+        requiresXeroConnection: false
+      };
+    }
+
     setIsCheckingAuth(true);
     try {
-      let authCheckUrl = '/api/auth/check-auth';
-      if (companyId) {
-        authCheckUrl += `?companyId=${encodeURIComponent(companyId)}`;
-      }
-      
-      const response = await fetch(authCheckUrl);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to check authentication');
-      }
-      
-      return data;
+      // Use the new API service to check authentication status
+      const authStatus = await apiService.checkAuthStatus(companyId);
+      return authStatus;
     } catch (error) {
       console.error('Auth check failed:', error);
       return {
         authenticated: false,
-        authRequired: 'pipedrive',
-        authUrl: '/auth/pipedrive',
-        message: 'Authentication check failed'
+        services: { pipedrive: false, xero: false },
+        companyId: companyId || '',
+        requiresXeroConnection: false
       };
     } finally {
       setIsCheckingAuth(false);
     }
   }, []);
 
-  const handleAuthRedirect = useCallback((authResponse: AuthResponse) => {
-    if (!authResponse.authenticated && authResponse.authUrl) {
-      window.location.href = authResponse.authUrl;
+  const handleAuthRedirect = useCallback((authResponse: AuthStatusResponse) => {
+    if (!authResponse.authenticated) {
+      if (!authResponse.services.pipedrive) {
+        // Redirect to Pipedrive auth
+        window.location.href = '/auth/pipedrive';
+      } else if (authResponse.requiresXeroConnection && !authResponse.services.xero) {
+        // Redirect to Xero auth with company ID
+        window.location.href = `/auth/xero?companyId=${authResponse.companyId}`;
+      }
     }
   }, []);
 

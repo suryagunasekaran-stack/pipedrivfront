@@ -2,33 +2,31 @@
  * Application constants and configuration
  */
 
-export const TOAST_AUTO_HIDE_DELAY = 2000; // 5 seconds
+export const TOAST_AUTO_HIDE_DELAY = 2000; // 2 seconds
 
 export const REDIRECT_DELAY = 2000; // 2 seconds
 
 export const DEFAULT_PIPEDRIVE_DOMAIN = "app.pipedrive.com";
 
-// External API base URL - now properly configured from environment variables
-export const EXTERNAL_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+// Backend API base URL - configured from environment variables
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
+// Correct API endpoints matching the backend specification
 export const API_ENDPOINTS = {
-  PIPEDRIVE_DATA: '/api/pipedrive/data',
-  PIPEDRIVE_CREATE_PROJECT: '/api/pipedrive/create-project',
-  PROJECT_CREATE_FULL: '/api/project/create-full',
-  XERO_STATUS: '/api/xero/status',
-  XERO_QUOTE: '/api/xero/quote',
   // Authentication endpoints
-  CHECK_AUTH: '/api/auth/check-auth',
-  AUTH_URL: '/api/auth/auth-url',
-  XERO_AUTH_URL: '/api/auth/xero-auth-url',
-} as const;
-
-export const EXTERNAL_API_ENDPOINTS = {
+  AUTH_STATUS: '/auth/status',
+  AUTH_URL: '/auth/auth-url',
+  XERO_AUTH_URL: '/auth/xero-auth-url',
+  LOGOUT: '/auth/logout',
+  
+  // Pipedrive data endpoints
   PIPEDRIVE_DATA: '/api/pipedrive-data',
+  
+  
   XERO_STATUS: '/api/xero/status',
-  XERO_QUOTE: '/api/xero/create-quote',
-  XERO_CONNECT: '/connect-xero',
-  PROJECT_CREATE: '/api/pipedrive/create-project',
+  XERO_CREATE_QUOTE: '/api/xero/create-quote',
+  
+  // Project management endpoints
   PROJECT_CREATE_FULL: '/api/project/create-full',
 } as const;
 
@@ -46,6 +44,8 @@ export const ERROR_MESSAGES = {
   DATA_FETCH_ERROR: 'Failed to fetch Pipedrive data',
   PROJECT_CREATION_ERROR: 'Failed to create project',
   MISSING_PROJECT_PARAMS: 'Deal ID or Company ID is missing from URL parameters',
+  AUTHENTICATION_ERROR: 'Authentication failed. Please try again.',
+  NETWORK_ERROR: 'Network error. Please check your connection.',
 } as const;
 
 // Project creation constants

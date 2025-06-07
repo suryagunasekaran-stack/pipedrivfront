@@ -2,21 +2,27 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { initializeAuthFlowHandler } from '../../../utils/autoAuthFlow';
 
 function XeroSuccessContent() {
-  const [connectionInfo, setConnectionInfo] = useState<any>(null);
+  const [tenantInfo, setTenantInfo] = useState<any>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Get connection info from URL parameters
-    const pipedriveCompany = searchParams.get('pipedriveCompany');
-    const xeroOrg = searchParams.get('xeroOrg');
+    // Get tenant info from URL parameters
+    const tenant = searchParams.get('tenant');
+    if (tenant) {
+      setTenantInfo({ name: decodeURIComponent(tenant) });
+    }
+
+    // Initialize auto auth flow handler
+    initializeAuthFlowHandler();
     
-    if (pipedriveCompany || xeroOrg) {
-      setConnectionInfo({
-        pipedriveCompany: pipedriveCompany ? decodeURIComponent(pipedriveCompany) : null,
-        xeroOrg: xeroOrg ? decodeURIComponent(xeroOrg) : null
-      });
+    // Check if we should auto-redirect
+    const shouldRedirect = sessionStorage.getItem('authFlowContext');
+    if (shouldRedirect) {
+      setIsRedirecting(true);
     }
   }, [searchParams]);
 
@@ -34,10 +40,10 @@ function XeroSuccessContent() {
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="max-w-md w-full space-y-8 p-8 text-center">
         <div>
-          {/* Success checkmark */}
-          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
+          {/* Success checkmark with Xero brand color */}
+          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
             <svg
-              className="w-8 h-8 text-green-600"
+              className="w-8 h-8 text-blue-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -56,37 +62,43 @@ function XeroSuccessContent() {
           </h1>
           
           <p className="text-gray-600 mb-6">
-            Your Xero account has been successfully connected and linked to your Pipedrive company.
+            Your Xero account has been connected successfully.
+            {tenantInfo && (
+              <span className="block mt-2 font-medium">
+                Connected to: {tenantInfo.name}
+              </span>
+            )}
           </p>
 
-          {connectionInfo && (
-            <div className="bg-gray-50 p-4 rounded-md mb-6 text-sm">
-              {connectionInfo.pipedriveCompany && (
-                <p className="mb-2">
-                  <span className="font-medium">Pipedrive Company:</span> {connectionInfo.pipedriveCompany}
-                </p>
-              )}
-              {connectionInfo.xeroOrg && (
-                <p>
-                  <span className="font-medium">Xero Organization:</span> {connectionInfo.xeroOrg}
-                </p>
-              )}
+          {isRedirecting && (
+            <div className="mb-6">
+              <div className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-md">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+                <span className="text-blue-800 text-sm">
+                  Redirecting you back to continue your action...
+                </span>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="space-y-4">
-          <button
-            onClick={handleClose}
-            className="w-full py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
-          >
-            Continue to Application
-          </button>
-        </div>
+        {!isRedirecting && (
+          <div className="space-y-4">
+            <button
+              onClick={handleClose}
+              className="w-full py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        )}
 
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            You can now create quotes and manage financial data through Xero
+            {isRedirecting 
+              ? 'Please wait while we redirect you...'
+              : 'You can now close this window or continue to the application'
+            }
           </p>
         </div>
       </div>

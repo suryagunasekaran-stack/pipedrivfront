@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { apiService } from '../../services/api';
 
 function XeroAuthContent() {
   const [loading, setLoading] = useState(false);
@@ -11,7 +12,7 @@ function XeroAuthContent() {
   const router = useRouter();
 
   useEffect(() => {
-    const companyId = searchParams.get('pipedriveCompanyId');
+    const companyId = searchParams.get('pipedriveCompanyId') || searchParams.get('companyId');
     if (!companyId) {
       setError('No Pipedrive company ID provided. Please connect to Pipedrive first.');
       return;
@@ -29,22 +30,11 @@ function XeroAuthContent() {
     setError(null);
 
     try {
-      // Fetch the Xero OAuth URL with company association
-      const response = await fetch(`/api/auth/xero-auth-url?pipedriveCompanyId=${pipedriveCompanyId}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to get Xero authorization URL');
-      }
-
-      const data = await response.json();
-      
-      if (data.authUrl) {
-        // Redirect to Xero OAuth
-        window.location.href = data.authUrl;
-      } else {
-        throw new Error('No authorization URL received');
-      }
+      // Use the API service to redirect to Xero OAuth
+      // According to the integration guide, this should redirect directly
+      apiService.connectXero(pipedriveCompanyId);
     } catch (err) {
+      console.error('Xero auth error:', err);
       setError(err instanceof Error ? err.message : 'Failed to connect to Xero');
       setLoading(false);
     }
@@ -74,7 +64,7 @@ function XeroAuthContent() {
           </p>
           {pipedriveCompanyId && (
             <p className="text-sm text-gray-500 mb-4">
-              This will be linked to your Pipedrive company
+              This will be linked to your Pipedrive company: {pipedriveCompanyId}
             </p>
           )}
         </div>
