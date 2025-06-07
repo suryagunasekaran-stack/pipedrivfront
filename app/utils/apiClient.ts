@@ -1,27 +1,27 @@
 /**
  * Enhanced API client with automatic authentication handling
+ * @deprecated - Use the new apiService from '../services/api' for better error handling and type safety
+ * This file is maintained for backward compatibility
  */
 
-interface ApiResponse<T = any> {
-  data?: T;
-  authenticated?: boolean;
-  authRequired?: 'pipedrive' | 'xero';
-  authUrl?: string;
-  message?: string;
-  error?: string;
-}
+import { apiService } from '../services/api';
+import { ApiResponse } from '../types/api';
 
+// Legacy interface for backward compatibility
 interface ApiCallOptions extends RequestInit {
   skipAuthRedirect?: boolean;
 }
 
 /**
- * Make an API call with automatic authentication handling
+ * Legacy API call function - use apiService for new code
+ * @deprecated Use apiService instead
  */
 export async function apiCall<T = any>(
   url: string, 
   options: ApiCallOptions = {}
 ): Promise<T> {
+  console.warn('⚠️ Using deprecated apiCall function. Please migrate to apiService from ../services/api');
+  
   const { skipAuthRedirect = false, ...fetchOptions } = options;
   
   try {
@@ -49,7 +49,7 @@ export async function apiCall<T = any>(
       }
     }
 
-    if (!response.ok) {
+        if (!response.ok) {
       throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
     }
 
@@ -62,47 +62,51 @@ export async function apiCall<T = any>(
 }
 
 /**
- * Specific API calls for common operations
+ * Legacy API object - use apiService for new code
+ * @deprecated Use apiService from '../services/api' instead
  */
 export const api = {
   // Check authentication status
-  checkAuth: () => apiCall<{
-    authenticated: boolean;
-    authRequired?: 'pipedrive' | 'xero';
-    authUrl?: string;
-    message?: string;
-  }>('/api/auth/check-auth', { skipAuthRedirect: true }),
+  checkAuth: () => {
+    console.warn('⚠️ Using deprecated api.checkAuth. Use apiService.checkAuthStatus instead');
+    return apiService.checkAuthStatus('');
+  },
 
   // Get Pipedrive data
-  getPipedriveData: (dealId: string, companyId: string) => 
-    apiCall(`/api/pipedrive/data?dealId=${dealId}&companyId=${companyId}`),
+  getPipedriveData: (dealId: string, companyId: string) => {
+    console.warn('⚠️ Using deprecated api.getPipedriveData. Use apiService.getPipedriveData instead');
+    return apiService.getPipedriveData(companyId, dealId);
+  },
 
   // Create project
-  createProject: (data: { dealId: string; companyId: string }) =>
-    apiCall('/api/pipedrive/create-project', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  createProject: (data: { dealId: string; companyId: string }) => {
+    console.warn('⚠️ Using deprecated api.createProject. Use apiService.createFullProject instead');
+    return apiService.createFullProject(data.companyId, data.dealId);
+  },
 
   // Create full project
   createFullProject: (data: { 
     pipedriveDealId: number | string; 
     xeroQuoteNumber?: string | null; 
     pipedriveCompanyId: string 
-  }) => 
-    apiCall('/api/project/create-full', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  }) => {
+    console.warn('⚠️ Using deprecated api.createFullProject. Use apiService.createProject instead');
+    return apiService.createProject({
+      pipedriveDealId: data.pipedriveDealId.toString(),
+      pipedriveCompanyId: data.pipedriveCompanyId,
+      existingProjectNumberToLink: data.xeroQuoteNumber || undefined,
+    });
+  },
 
   // Get Xero status
-  getXeroStatus: (pipedriveCompanyId: string) =>
-    apiCall(`/api/xero/status?pipedriveCompanyId=${pipedriveCompanyId}`),
+  getXeroStatus: (pipedriveCompanyId: string) => {
+    console.warn('⚠️ Using deprecated api.getXeroStatus. Use apiService.checkXeroStatus instead');
+    return apiService.checkXeroStatus(pipedriveCompanyId);
+  },
 
   // Create Xero quote
-  createXeroQuote: (data: { pipedriveDealId: string; pipedriveCompanyId: string }) =>
-    apiCall('/api/xero/quote', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  createXeroQuote: (data: { pipedriveDealId: string; pipedriveCompanyId: string }) => {
+    console.warn('⚠️ Using deprecated api.createXeroQuote. Use apiService.createQuote instead');
+    return apiService.createQuote(data);
+  },
 };

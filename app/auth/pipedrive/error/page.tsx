@@ -1,9 +1,9 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-export default function PipedriveErrorPage() {
+function PipedriveErrorContent() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -88,5 +88,20 @@ export default function PipedriveErrorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PipedriveErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <PipedriveErrorContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
 import QuotationDetails from '../components/QuotationDetails';
@@ -24,7 +24,7 @@ import SimpleLoader from '../components/SimpleLoader';
  * 
  * @returns JSX.Element - The rendered page component
  */
-export default function PipedriveDataView() {
+function PipedriveDataViewContent() {
   const searchParams = useSearchParams();
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
@@ -107,5 +107,13 @@ export default function PipedriveDataView() {
         toast={toast}
       />
     </div>
+  );
+}
+
+export default function PipedriveDataView() {
+  return (
+    <Suspense fallback={<SimpleLoader />}>
+      <PipedriveDataViewContent />
+    </Suspense>
   );
 }

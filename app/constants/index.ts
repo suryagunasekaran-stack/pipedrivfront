@@ -8,8 +8,8 @@ export const REDIRECT_DELAY = 2000; // 2 seconds
 
 export const DEFAULT_PIPEDRIVE_DOMAIN = "app.pipedrive.com";
 
-// External API base URL - should be moved to environment variables in production
-export const EXTERNAL_API_BASE_URL = process.env.EXTERNAL_API_BASE_URL || 'http://localhost:3000';
+// External API base URL - now properly configured from environment variables
+export const EXTERNAL_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
 export const API_ENDPOINTS = {
   PIPEDRIVE_DATA: '/api/pipedrive/data',
