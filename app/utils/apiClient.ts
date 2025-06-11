@@ -2,6 +2,8 @@
  * Enhanced API client with automatic authentication handling
  */
 
+import { BACKEND_API_BASE_URL } from '../constants';
+
 interface ApiResponse<T = any> {
   data?: T;
   authenticated?: boolean;
@@ -105,4 +107,34 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Get quotation data for updating
+  getQuotationData: async (dealId: string, companyId: string) => {
+    const response = await fetch(`${BACKEND_API_BASE_URL}/api/pipedrive/get-quotation-data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dealId, companyId })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  // Update Xero quote
+  updateXeroQuote: async (data: { dealId: string; companyId: string; quoteId?: string }) => {
+    const response = await fetch(`${BACKEND_API_BASE_URL}/api/xero/update-quote`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
 };
