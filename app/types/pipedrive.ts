@@ -8,6 +8,13 @@ export interface FetchedDealDetails {
   add_time?: string; // Issue date
   expected_close_date?: string | null; // Expiry date
   currency?: string;
+  quotation_number?: string; // Custom field for Quotation Number (deprecated - use hash field)
+  // Custom field for Quotation Number - this hash is company-specific
+  // TODO: Future implementation should map company-specific field IDs
+  "5016d4ba7c51895eef88fadadff9ddd1301da89e"?: string;
+  // Custom field for Project Number - this hash is company-specific
+  // TODO: Future implementation should map company-specific field IDs
+  "54326aa3421d5bf7cb2ce5a215e5ab986cc50a27"?: string;
 }
 
 export interface FetchedProductInfo {

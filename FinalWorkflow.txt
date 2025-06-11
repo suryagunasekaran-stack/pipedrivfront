@@ -1,0 +1,10 @@
+1. Deal is created
+    - Proper contact, organisation is chosen
+    - Products is filled out properly
+    
+
+
+
+Notes:
+
+1. for check quote field, need to make it dynamic
