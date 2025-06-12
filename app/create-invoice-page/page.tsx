@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import SimpleLoader from '../components/SimpleLoader';
@@ -41,7 +41,7 @@ interface InvoiceCreationResponse {
   error?: string;
 }
 
-export default function CreateInvoicePage() {
+function CreateInvoiceContent() {
   const searchParams = useSearchParams();
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
@@ -453,4 +453,16 @@ function formatCurrency(value: number, currency: string = 'USD'): string {
     style: 'currency',
     currency: currency,
   }).format(value);
-} 
+}
+
+function LoadingFallback() {
+  return <SimpleLoader />;
+}
+
+export default function CreateInvoicePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CreateInvoiceContent />
+    </Suspense>
+  );
+}

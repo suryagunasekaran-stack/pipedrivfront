@@ -4,7 +4,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useProjectData, useProjectCreation } from '../hooks/useProjectData';
 import { useProjectRedirect } from '../hooks/useProjectRedirect';
 import { useAuth } from '../hooks/useAuth';
@@ -18,7 +18,7 @@ import { CreationResult } from '../types/pipedrive';
 /**
  * Main page component for project creation workflow
  */
-export default function CreateProjectPage() {
+function CreateProjectContent() {
   const searchParams = useSearchParams();
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
@@ -138,5 +138,21 @@ export default function CreateProjectPage() {
         onCreateProject={createProject}
       />
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-white">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    </div>
+  );
+}
+
+export default function CreateProjectPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CreateProjectContent />
+    </Suspense>
   );
 }

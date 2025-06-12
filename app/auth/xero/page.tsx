@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function XeroAuthPage() {
+function XeroAuthContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pipedriveCompanyId, setPipedriveCompanyId] = useState<string | null>(null);
@@ -118,5 +118,21 @@ export default function XeroAuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    </div>
+  );
+}
+
+export default function XeroAuthPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <XeroAuthContent />
+    </Suspense>
   );
 }
