@@ -13,8 +13,8 @@ export default function PipedriveAuthPage() {
     setError(null);
 
     try {
-      // Fetch the Pipedrive OAuth URL
-      const response = await fetch('/api/auth/auth-url');
+      // Call your backend directly
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/auth-url`);
       
       if (!response.ok) {
         throw new Error('Failed to get authorization URL');
