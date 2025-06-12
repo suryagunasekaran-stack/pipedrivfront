@@ -32,7 +32,7 @@ export const EXTERNAL_API_ENDPOINTS = {
   PIPEDRIVE_DATA: '/api/pipedrive-data',
   XERO_STATUS: '/api/xero/status',
   XERO_QUOTE: '/api/xero/create-quote',
-  XERO_CONNECT: '/connect-xero',
+  XERO_CONNECT: '/auth/connect-xero',
   PROJECT_CREATE: '/api/pipedrive/create-project',
   PROJECT_CREATE_FULL: '/api/project/create-full',
 } as const;
