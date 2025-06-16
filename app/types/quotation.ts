@@ -41,6 +41,8 @@ export interface QuotationDataResponse {
     unit_price?: number | null;  // Make optional as it might be missing/null from backend
     sum: number;
     currency?: string;
+    discount?: number;
+    discount_type?: 'percentage' | 'amount';
     // Allow for other possible field names from backend
     [key: string]: any;
   }>;
@@ -54,6 +56,8 @@ export interface QuotationDataResponse {
       Quantity: number;
       UnitAmount: number;
       LineAmount: number;
+      DiscountRate?: number;
+      DiscountAmount?: number;
     }>;
     subTotal: number;
     totalTax: number;
@@ -80,6 +84,38 @@ export interface QuotationDataResponse {
   };
 }
 
+export interface DiscountAnalysisItem {
+  productIndex: number;
+  productName: string;
+  pipedrive: {
+    baseAmount: number;
+    expectedAmount: number;
+    discountValue: number;
+    discountType: 'percentage' | 'amount';
+    totalDiscountApplied: number;
+    specialPrice: number | null;
+  };
+  xero: {
+    lineAmount: number;
+    discountRate: number;
+    discountAmount: number;
+    totalDiscountApplied: number;
+  };
+  discrepancy: number;
+  discountMatch: boolean;
+}
+
+export interface ProductComparison {
+  mismatches: string[];
+  discountAnalysis?: DiscountAnalysisItem[];
+  totalDiscrepancies?: {
+    pipedriveTotalBeforeDiscount: number;
+    pipedriveExpectedTotal: number;
+    xeroActualTotal: number;
+    discountDifference: number;
+  };
+}
+
 export interface ComparisonAnalysis {
   canUpdate: boolean;
   message?: string;
@@ -87,6 +123,7 @@ export interface ComparisonAnalysis {
   removedItems?: Array<any>;
   changedItems?: Array<any>;
   hasChanges?: boolean;
+  productComparison?: ProductComparison;
 }
 
 export interface UpdateQuoteRequest {

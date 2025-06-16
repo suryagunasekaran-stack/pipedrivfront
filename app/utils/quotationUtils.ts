@@ -6,6 +6,7 @@ import { QuotationDataResponse, ComparisonAnalysis } from '../types/quotation';
 
 /**
  * Analyze quotation changes between Pipedrive and Xero
+ * Enhanced version that includes discount-aware change detection
  */
 export function analyzeQuotationChanges(data: QuotationDataResponse): ComparisonAnalysis {
   if (!data.comparison.canUpdate) {
@@ -29,19 +30,40 @@ export function analyzeQuotationChanges(data: QuotationDataResponse): Comparison
   
   const changedItems = pipedriveProducts.filter(product => {
     const xeroItem = xeroLineItems.find(item => item.Description === product.name);
+    if (!xeroItem) return false;
+    
     const productUnitPrice = getProductUnitPrice(product);
-    return xeroItem && (
+    
+    // Enhanced change detection including discount and sum fields
+    const hasChanged = (
       xeroItem.Quantity !== product.quantity ||
-      (productUnitPrice !== null && Math.abs(xeroItem.UnitAmount - productUnitPrice) > 0.01)
+      (productUnitPrice !== null && Math.abs(xeroItem.UnitAmount - productUnitPrice) > 0.01) ||
+      Math.abs(xeroItem.LineAmount - product.sum) > 0.01 ||  // ← Check line total changes (most important!)
+      (product.discount && Math.abs((xeroItem.DiscountRate || 0) - product.discount) > 0.01) || // ← Check discount rate changes
+      (product.discount_type && xeroItem.DiscountRate && xeroItem.DiscountRate > 0 && product.discount_type !== 'percentage') || // ← Check discount type changes
+      (product.discount_type === 'percentage' && product.discount && product.discount > 0 && (xeroItem.DiscountRate || 0) === 0) || // ← Pipedrive has % discount but Xero doesn't
+      (product.discount_type === 'amount' && product.discount && product.discount > 0 && (xeroItem.DiscountAmount || 0) === 0) // ← Pipedrive has $ discount but Xero doesn't
     );
+    
+    return hasChanged;
   });
+
+  // Extract discount issues from comparison analysis if available  
+  const discountIssues = (data as any).comparison?.productComparison?.discountAnalysis?.filter(
+    (item: any) => !item.discountMatch || (item.discrepancy && item.discrepancy > 0.01)
+  ) || [];
+
+  // Include discount issues in changed items count
+  const hasChanges = newProducts.length > 0 || removedItems.length > 0 || changedItems.length > 0 || discountIssues.length > 0;
   
   return {
     canUpdate: true,
     newProducts,
     removedItems, 
     changedItems,
-    hasChanges: newProducts.length > 0 || removedItems.length > 0 || changedItems.length > 0
+    hasChanges,
+    // Pass through the enhanced product comparison from backend if available
+    productComparison: (data as any).comparison?.productComparison
   };
 }
 

@@ -8,6 +8,9 @@ interface QuoteExistsPageProps {
   companyId: string | null;
   dealTitle?: string;
   organizationName?: string;
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 /**
@@ -20,7 +23,10 @@ export default function QuoteExistsPage({
   dealId, 
   companyId,
   dealTitle,
-  organizationName
+  organizationName,
+  userId,
+  userEmail,
+  userName
 }: QuoteExistsPageProps) {
   const router = useRouter();
 
@@ -30,8 +36,36 @@ export default function QuoteExistsPage({
   };
 
   const handleUpdateDeal = () => {
-    const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || DEFAULT_PIPEDRIVE_DOMAIN;
-    router.push(`https://${pipedriveDomain}/deal/${dealId}`);
+    // Debug: Log the values to check what's being passed
+    console.log('Update Deal - Values:', {
+      dealId,
+      companyId,
+      userId,
+      userEmail,
+      userName
+    });
+
+    // Validate required parameters
+    if (!dealId || !companyId) {
+      console.error('Missing required parameters:', { dealId, companyId });
+      alert('Missing required parameters: dealId or companyId');
+      return;
+    }
+
+    // Construct the external workflow URL using environment variable
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const params = new URLSearchParams({
+      uiAction: 'updateQuotation',
+      dealId: dealId,
+      companyId: companyId,
+      ...(userId && { userId }),
+      ...(userEmail && { userEmail }),
+      ...(userName && { userName }),
+    });
+    
+    const updateUrl = `${baseUrl}/pipedrive-action?${params.toString()}`;
+    console.log('Redirecting to:', updateUrl);
+    window.open(updateUrl, '_blank');
   };
 
   // Dynamic content based on type

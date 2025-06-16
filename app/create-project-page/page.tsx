@@ -22,6 +22,10 @@ function CreateProjectContent() {
   const searchParams = useSearchParams();
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
+  // Extract additional user parameters
+  const userId = searchParams.get('userId');
+  const userEmail = searchParams.get('userEmail');
+  const userName = searchParams.get('userName');
 
   // Authentication handling
   const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
@@ -122,6 +126,9 @@ function CreateProjectContent() {
         companyId={companyId}
         dealTitle={pipedriveData.dealDetails?.title}
         organizationName={pipedriveData.organizationDetails?.name}
+        userId={userId || undefined}
+        userEmail={userEmail || undefined}
+        userName={userName || undefined}
       />
     );
   }

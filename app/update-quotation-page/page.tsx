@@ -78,16 +78,38 @@ function UpdateQuotationContent() {
     setUpdatingQuote(true);
     
     try {
-      const response = await api.updateXeroQuote({ 
+      const updatePayload = { 
         dealId, 
         companyId,
-        quoteId: quotationData?.xeroQuotation?.quoteId
-      });
+        quoteId: quotationData?.xeroQuotation?.quoteId,
+        // Include the full product data for the backend to sync
+        products: quotationData.products,
+        // Include discount analysis for backend reference
+        discountAnalysis: comparisonAnalysis?.productComparison?.discountAnalysis,
+        // Include comparison mismatches for context
+        comparisonMismatches: comparisonAnalysis?.productComparison?.mismatches
+      };
+
+      // LOG THE PAYLOAD BEING SENT
+      console.log('=== UPDATE QUOTE PAYLOAD BEING SENT ===');
+      console.log(JSON.stringify(updatePayload, null, 2));
+      console.log('=== FULL QUOTATION DATA CONTEXT ===');
+      console.log('Products:', quotationData.products);
+      console.log('Xero Quotation:', quotationData.xeroQuotation);
+      console.log('Comparison Analysis:', comparisonAnalysis);
+      console.log('=== END PAYLOAD LOG ===');
+      
+      const response = await api.updateXeroQuote(updatePayload);
+      
+      console.log('=== UPDATE QUOTE RESPONSE ===');
+      console.log(JSON.stringify(response, null, 2));
+      console.log('=== END RESPONSE LOG ===');
       
       // Show success component instead of toast and redirect
       setUpdateSuccess(response.data);
 
     } catch (error) {
+      console.error('=== UPDATE QUOTE ERROR ===', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update quote';
       toast.error(errorMessage);
     } finally {
@@ -95,10 +117,22 @@ function UpdateQuotationContent() {
     }
   };
 
-  // Debug: Log product data to help identify the issue
+  // Debug: Log the full response payload
   useEffect(() => {
+    if (quotationData) {
+      console.log('=== FULL QUOTATION DATA PAYLOAD ===');
+      console.log(JSON.stringify(quotationData, null, 2));
+      console.log('=== END PAYLOAD ===');
+    }
+    
+    if (comparisonAnalysis) {
+      console.log('=== COMPARISON ANALYSIS ===');
+      console.log(JSON.stringify(comparisonAnalysis, null, 2));
+      console.log('=== END COMPARISON ANALYSIS ===');
+    }
+
     if (quotationData?.products) {
-      console.log('Product data from backend:', quotationData.products);
+      console.log('=== PRODUCT DATA ===');
       quotationData.products.forEach((product, index) => {
         console.log(`Product ${index}:`, {
           name: product.name,
@@ -110,7 +144,7 @@ function UpdateQuotationContent() {
         });
       });
     }
-  }, [quotationData]);
+  }, [quotationData, comparisonAnalysis]);
 
   // Show success component if update was successful
   if (updateSuccess) {
@@ -249,18 +283,28 @@ function UpdateQuotationContent() {
               <div className="flex items-center">
                 <div className="flex-1">
                   {comparisonAnalysis.canUpdate ? (
-                    comparisonAnalysis.hasChanges ? (
-                      <>
-                        <p className="text-sm font-semibold text-yellow-800">Changes Detected</p>
-                        <p className="text-sm text-yellow-600">
-                          {comparisonAnalysis.newProducts?.length || 0} new products, 
-                          {' '}{comparisonAnalysis.removedItems?.length || 0} removed items, 
-                          {' '}{comparisonAnalysis.changedItems?.length || 0} changed items
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-sm font-semibold text-green-800">No changes detected</p>
-                    )
+                    (() => {
+                      const discountIssues = comparisonAnalysis.productComparison?.discountAnalysis?.filter(
+                        item => !item.discountMatch || (item.discrepancy && item.discrepancy > 0.01)
+                      ) || [];
+                      const hasChanges = comparisonAnalysis.hasChanges || discountIssues.length > 0;
+                      
+                      return hasChanges ? (
+                        <>
+                          <p className="text-sm font-semibold text-yellow-800">Changes Detected</p>
+                          <p className="text-sm text-yellow-600">
+                            {comparisonAnalysis.newProducts?.length || 0} new products, 
+                            {' '}{comparisonAnalysis.removedItems?.length || 0} removed items, 
+                            {' '}{comparisonAnalysis.changedItems?.length || 0} changed items
+                            {discountIssues.length > 0 && (
+                              <>, {discountIssues.length} discount mismatches</>
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-semibold text-green-800">No changes detected</p>
+                      );
+                    })()
                   ) : (
                     <p className="text-sm font-semibold text-red-800">
                       {comparisonAnalysis.message}
@@ -288,22 +332,36 @@ function UpdateQuotationContent() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {quotationData.products.map((product) => (
-                      <tr key={product.id} className={getComparisonItemColor(
-                        product.id, 
-                        comparisonAnalysis?.newProducts, 
-                        comparisonAnalysis?.changedItems
-                      )}>
-                        <td className="px-4 py-2 text-sm text-gray-900">{product.name}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-right">{product.quantity}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                          {formatCurrency(getProductUnitPrice(product), product.currency)}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                          {formatCurrency(product.sum, product.currency)}
-                        </td>
-                      </tr>
-                    ))}
+                    {quotationData.products.map((product, index) => {
+                      const discountInfo = comparisonAnalysis?.productComparison?.discountAnalysis?.find(
+                        d => d.productIndex === (index + 1) || d.productName === product.name
+                      );
+                      // Debug: Log the matching attempt
+                      if (comparisonAnalysis?.productComparison?.discountAnalysis && comparisonAnalysis.productComparison.discountAnalysis.length > 0) {
+                        console.log('Pipedrive Product Matching:', {
+                          productIndex: index + 1,
+                          productName: product.name,
+                          discountAnalysis: comparisonAnalysis.productComparison.discountAnalysis,
+                          matchFound: !!discountInfo
+                        });
+                      }
+                      return (
+                        <tr key={product.id} className={getComparisonItemColor(
+                          product.id, 
+                          comparisonAnalysis?.newProducts, 
+                          comparisonAnalysis?.changedItems
+                        )}>
+                          <td className="px-4 py-2 text-sm text-gray-900">{product.name}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{product.quantity}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                            {formatCurrency(getProductUnitPrice(product), product.currency)}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                            {formatCurrency(product.sum, product.currency)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
@@ -339,47 +397,61 @@ function UpdateQuotationContent() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {quotationData.xeroQuotation.lineItems.map((item, index) => (
-                        <tr key={index} className={
-                          comparisonAnalysis?.removedItems?.find(i => i.Description === item.Description) ? 'bg-red-50' : ''
-                        }>
-                          <td className="px-4 py-2 text-sm text-gray-900">{item.Description}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{item.Quantity}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                            {formatCurrency(item.UnitAmount)}
+                      {quotationData.xeroQuotation.lineItems.map((item, index) => {
+                        const discountInfo = comparisonAnalysis?.productComparison?.discountAnalysis?.find(
+                          d => d.productIndex === (index + 1) || d.productName === item.Description
+                        );
+                        // Debug: Log the matching attempt
+                        if (comparisonAnalysis?.productComparison?.discountAnalysis && comparisonAnalysis.productComparison.discountAnalysis.length > 0) {
+                          console.log('Xero Product Matching:', {
+                            productIndex: index + 1,
+                            description: item.Description,
+                            discountAnalysis: comparisonAnalysis.productComparison.discountAnalysis,
+                            matchFound: !!discountInfo
+                          });
+                        }
+                        return (
+                          <tr key={index} className={
+                            comparisonAnalysis?.removedItems?.find(i => i.Description === item.Description) ? 'bg-red-50' : ''
+                          }>
+                            <td className="px-4 py-2 text-sm text-gray-900">{item.Description}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900 text-right">{item.Quantity}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                              {formatCurrency(item.UnitAmount)}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                              {formatCurrency(item.LineAmount)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                                          <tfoot className="bg-gray-50">
+                        <tr>
+                          <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
+                            Subtotal
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                            {formatCurrency(item.LineAmount)}
+                            {formatCurrency(quotationData.xeroQuotation.subTotal)}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-gray-50">
-                      <tr>
-                        <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
-                          Subtotal
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                          {formatCurrency(quotationData.xeroQuotation.subTotal)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
-                          Tax
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                          {formatCurrency(quotationData.xeroQuotation.totalTax)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td colSpan={3} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
-                          Total
-                        </td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
-                          {formatCurrency(quotationData.xeroQuotation.total)}
-                        </td>
-                      </tr>
-                    </tfoot>
+                        <tr>
+                          <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
+                            Tax
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                            {formatCurrency(quotationData.xeroQuotation.totalTax)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colSpan={3} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
+                            Total
+                          </td>
+                          <td className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
+                            {formatCurrency(quotationData.xeroQuotation.total)}
+                          </td>
+                        </tr>
+                      </tfoot>
                   </table>
                 </div>
               ) : (
@@ -389,6 +461,85 @@ function UpdateQuotationContent() {
               )}
             </div>
           </div>
+
+          {/* Discount Summary */}
+          {comparisonAnalysis?.productComparison?.discountAnalysis && 
+           comparisonAnalysis.productComparison.discountAnalysis.some(item => !item.discountMatch) && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-red-800 mb-2">⚠️ Discount Mismatches Detected</h4>
+              <div className="space-y-2">
+                {comparisonAnalysis.productComparison.discountAnalysis
+                  .filter(item => !item.discountMatch)
+                  .map((item, index) => (
+                    <div key={index} className="text-xs p-2 bg-white rounded border border-red-100">
+                      <div className="font-semibold text-gray-900">{item.productName}</div>
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div>
+                          <span className="text-gray-600">Pipedrive: </span>
+                          <span className="text-green-700">
+                            ${item.pipedrive.baseAmount.toFixed(2)} → ${item.pipedrive.expectedAmount.toFixed(2)}
+                          </span>
+                          <div className="text-green-600 text-xs">
+                            ({item.pipedrive.discountValue}{item.pipedrive.discountType === 'percentage' ? '%' : '$'} discount)
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Xero: </span>
+                          <span className="text-blue-700">${item.xero.lineAmount.toFixed(2)}</span>
+                          <div className="text-gray-500 text-xs">
+                            ({item.xero.discountRate > 0 ? `${item.xero.discountRate}% discount` : 'No discount'})
+                          </div>
+                        </div>
+                      </div>
+                      {item.discrepancy && item.discrepancy > 0 && (
+                        <div className="mt-1 text-red-600 font-semibold text-xs">
+                          Difference: ${item.discrepancy.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Show discount summary even if matches exist */}
+          {comparisonAnalysis?.productComparison?.totalDiscrepancies && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-blue-800 mb-2">💰 Total Discount Summary</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <div className="text-gray-600">Before Discounts</div>
+                  <div className="font-semibold text-gray-900">
+                    {formatCurrency(comparisonAnalysis.productComparison.totalDiscrepancies.pipedriveTotalBeforeDiscount)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Expected After Discounts</div>
+                  <div className="font-semibold text-green-700">
+                    {formatCurrency(comparisonAnalysis.productComparison.totalDiscrepancies.pipedriveExpectedTotal)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Xero Actual Total</div>
+                  <div className="font-semibold text-blue-700">
+                    {formatCurrency(comparisonAnalysis.productComparison.totalDiscrepancies.xeroActualTotal)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Total Difference</div>
+                  <div className={`font-semibold ${
+                    Math.abs(comparisonAnalysis.productComparison.totalDiscrepancies.discountDifference) > 0 
+                      ? 'text-red-700' : 'text-green-700'
+                  }`}>
+                    {Math.abs(comparisonAnalysis.productComparison.totalDiscrepancies.discountDifference) > 0 
+                      ? `$${Math.abs(comparisonAnalysis.productComparison.totalDiscrepancies.discountDifference).toFixed(2)}`
+                      : '✅ Perfect match'
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Legend */}
           {comparisonAnalysis?.hasChanges && (

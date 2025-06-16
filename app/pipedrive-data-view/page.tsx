@@ -192,6 +192,9 @@ function PipedriveDataViewContent() {
         companyId={companyId}
         dealTitle={data.dealDetails?.title}
         organizationName={data.organizationDetails?.name}
+        userId={userId || undefined}
+        userEmail={userEmail || undefined}
+        userName={userName || undefined}
       />
     );
   }
