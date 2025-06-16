@@ -19,9 +19,11 @@ export const API_ENDPOINTS = {
   PIPEDRIVE_CREATE_PROJECT: '/api/pipedrive/create-project',
   PIPEDRIVE_QUOTATION_DATA: '/api/pipedrive/get-quotation-data',
   PROJECT_CREATE_FULL: '/api/project/create-full',
+  PROJECT_LINK_EXISTING: '/api/project/link-existing',
   XERO_STATUS: '/api/xero/status',
   XERO_QUOTE: '/api/xero/quote',
   XERO_UPDATE_QUOTE: '/api/xero/update-quote',
+  XERO_PROJECTS_SEARCH: '/api/xero/projects/search',
   // Authentication endpoints
   CHECK_AUTH: '/api/auth/check-auth',
   AUTH_URL: '/api/auth/auth-url',
@@ -35,6 +37,8 @@ export const EXTERNAL_API_ENDPOINTS = {
   XERO_CONNECT: '/auth/connect-xero',
   PROJECT_CREATE: '/api/pipedrive/create-project',
   PROJECT_CREATE_FULL: '/api/project/create-full',
+  PROJECT_LINK_EXISTING: '/api/project/link-existing',
+  XERO_PROJECTS_SEARCH: '/api/xero/projects/search',
 } as const;
 
 export const TOAST_TYPES = {

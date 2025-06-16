@@ -9,7 +9,7 @@ import { useProjectData, useProjectCreation } from '../hooks/useProjectData';
 import { useProjectRedirect } from '../hooks/useProjectRedirect';
 import { useAuth } from '../hooks/useAuth';
 import { usePipedriveData } from '../hooks/usePipedriveData';
-import ProjectPreflightCheck from '../components/ProjectPreflightCheck';
+import ProjectCreationMode from '../components/ProjectCreationMode';
 import QuoteExistsPage from '../components/QuoteExistsPage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -133,11 +133,13 @@ function CreateProjectContent() {
     );
   }
 
-  // Default view - show project creation workflow
+  // Default view - show project creation workflow with mode selection
   return (
     <div className="min-h-screen bg-white py-8 px-4 flex flex-col items-center">
-      <ProjectPreflightCheck
+      <ProjectCreationMode
         projectData={projectData}
+        dealId={dealId}
+        companyId={companyId}
         isLoading={isLoading}
         error={error}
         isCreating={isCreating}
