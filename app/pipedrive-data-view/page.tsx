@@ -32,6 +32,13 @@ function PipedriveDataViewContent() {
   const dealId = searchParams.get('dealId');
   const companyId = searchParams.get('companyId');
   const uiAction = searchParams.get('uiAction');
+  // Extract additional parameters from query string
+  const userId = searchParams.get('userId');
+  const userEmail = searchParams.get('userEmail');
+  const userName = searchParams.get('userName');
+  const tenantId = searchParams.get('tenantId');
+  const xeroConnectedParam = searchParams.get('xeroConnected');
+  const xeroJustConnected = searchParams.get('xeroJustConnected');
   const router = useRouter();
   
   // State to track if we've already attempted authentication
@@ -90,12 +97,22 @@ function PipedriveDataViewContent() {
     setCreatingQuote(true);
     
     try {
+      // Include user info and additional parameters from query params
+      const requestBody = {
+        pipedriveCompanyId: companyId,
+        pipedriveDealId: dealId,
+        // Include user info from query params
+        ...(userId && { userId }),
+        ...(userEmail && { userEmail }),
+        ...(userName && { userName }),
+        ...(tenantId && { tenantId }),
+        ...(xeroConnectedParam && { xeroConnected: xeroConnectedParam === 'true' }),
+        ...(xeroJustConnected && { xeroJustConnected: xeroJustConnected === 'true' }),
+      };
+
       const responseData: XeroQuoteResponse = await apiCall(API_ENDPOINTS.XERO_QUOTE, {
         method: 'POST',
-        body: JSON.stringify({ 
-          pipedriveDealId: dealId, 
-          pipedriveCompanyId: companyId 
-        }),
+        body: JSON.stringify(requestBody),
       });
       
       const successMsg = responseData.message || 

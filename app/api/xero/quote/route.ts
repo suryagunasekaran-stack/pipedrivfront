@@ -9,7 +9,16 @@ import { EXTERNAL_API_BASE_URL, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '@
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pipedriveDealId, pipedriveCompanyId } = body;
+    const { 
+      pipedriveDealId, 
+      pipedriveCompanyId,
+      userId,
+      userEmail,
+      userName,
+      tenantId,
+      xeroConnected,
+      xeroJustConnected
+    } = body;
 
     if (!pipedriveDealId || !pipedriveCompanyId) {
       return NextResponse.json(
@@ -17,6 +26,20 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Prepare request body with all available parameters
+    const requestBody: any = {
+      pipedriveDealId,
+      pipedriveCompanyId
+    };
+
+    // Include additional parameters if they exist
+    if (userId) requestBody.userId = userId;
+    if (userEmail) requestBody.userEmail = userEmail;
+    if (userName) requestBody.userName = userName;
+    if (tenantId) requestBody.tenantId = tenantId;
+    if (xeroConnected !== undefined) requestBody.xeroConnected = xeroConnected;
+    if (xeroJustConnected !== undefined) requestBody.xeroJustConnected = xeroJustConnected;
 
     // Call external API for Xero quote creation
     const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.XERO_QUOTE}`, {
@@ -27,7 +50,7 @@ export async function POST(request: NextRequest) {
         'Cookie': request.headers.get('cookie') || '',
         'Authorization': request.headers.get('authorization') || '',
       },
-      body: JSON.stringify({ pipedriveDealId, pipedriveCompanyId }),
+      body: JSON.stringify(requestBody),
     });
 
     // Handle authentication errors

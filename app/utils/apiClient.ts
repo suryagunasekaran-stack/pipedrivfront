@@ -102,7 +102,16 @@ export const api = {
     apiCall(`/api/xero/status?pipedriveCompanyId=${pipedriveCompanyId}`),
 
   // Create Xero quote
-  createXeroQuote: (data: { pipedriveDealId: string; pipedriveCompanyId: string }) =>
+  createXeroQuote: (data: { 
+    pipedriveDealId: string; 
+    pipedriveCompanyId: string;
+    userId?: string;
+    userEmail?: string;
+    userName?: string;
+    tenantId?: string;
+    xeroConnected?: boolean;
+    xeroJustConnected?: boolean;
+  }) =>
     apiCall('/api/xero/quote', {
       method: 'POST',
       body: JSON.stringify(data),
