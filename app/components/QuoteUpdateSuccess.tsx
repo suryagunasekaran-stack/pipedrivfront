@@ -8,18 +8,26 @@ import { formatCurrency } from '../utils/quotationUtils';
 interface QuoteUpdateSuccessProps {
   updateData: {
     dealId: string;
-    quoteId: string;
-    originalQuoteNumber: string;
-    updatedQuoteNumber: string;
-    status: string;
-    lineItemsUpdated: number;
-    totalAmount: number;
-    currency: string;
-    lastUpdated: string;
-    versionHistory: {
-      previousVersion: string;
-      currentVersion: string;
-      versionIncrement: number;
+    quoteId?: string;
+    originalQuoteNumber?: string;
+    updatedQuoteNumber?: string;
+    newVersion?: string;
+    previousVersion?: string;
+    status?: string;
+    lineItemsUpdated?: number;
+    totalAmount?: number;
+    currency?: string;
+    lastUpdated?: string;
+    // Add quote object structure to match API response
+    quote?: {
+      QuoteID: string;
+      QuoteNumber: string;
+      Status: string;
+      Total: number;
+      CurrencyCode: string;
+      UpdatedDateUTC: string;
+      LineItems: any[];
+      Title?: string;
     };
   };
   dealTitle?: string;
@@ -40,6 +48,33 @@ export default function QuoteUpdateSuccess({
   const handleGoToPipedrive = () => {
     const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || 'app.pipedrive.com';
     window.open(`https://${pipedriveDomain}/deal/${updateData.dealId}`, '_blank');
+  };
+
+  // Extract values from the API response structure
+  const quote = updateData.quote;
+  const totalAmount = quote?.Total ?? updateData.totalAmount ?? 0;
+  const currency = quote?.CurrencyCode ?? updateData.currency ?? 'USD';
+  const status = quote?.Status ?? updateData.status ?? 'UNKNOWN';
+  const lineItemsCount = quote?.LineItems?.length ?? updateData.lineItemsUpdated ?? 0;
+  const quoteId = quote?.QuoteID ?? updateData.quoteId ?? '';
+  
+  // Handle Xero date format "/Date(1750131022057)/" or fallback to updateData.lastUpdated
+  const getFormattedDate = () => {
+    const xeroDate = quote?.UpdatedDateUTC;
+    if (xeroDate && typeof xeroDate === 'string' && xeroDate.startsWith('/Date(')) {
+      // Extract timestamp from "/Date(1750131022057)/"
+      const timestamp = parseInt(xeroDate.replace(/\/Date\((\d+)\)\//, '$1'));
+      if (!isNaN(timestamp)) {
+        return new Date(timestamp).toLocaleString();
+      }
+    }
+    
+    // Fallback to updateData.lastUpdated
+    if (updateData.lastUpdated) {
+      return new Date(updateData.lastUpdated).toLocaleString();
+    }
+    
+    return 'Unknown';
   };
 
   return (
@@ -64,31 +99,37 @@ export default function QuoteUpdateSuccess({
           {/* Update Details */}
           <div className="px-6 py-4">
             <dl className="space-y-3">
-              {dealTitle && (
+              {(dealTitle || quote?.Title) && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Deal</dt>
-                  <dd className="text-sm text-gray-900">{dealTitle}</dd>
+                  <dd className="text-sm text-gray-900">{dealTitle || quote?.Title}</dd>
                 </div>
               )}
               
               <div>
                 <dt className="text-sm font-medium text-gray-500">Quote Version</dt>
                 <dd className="text-sm text-gray-900">
-                  <span className="text-gray-600">{updateData.versionHistory.previousVersion}</span>
-                  <span className="mx-2 text-gray-400">→</span>
-                  <span className="font-semibold text-green-600">{updateData.versionHistory.currentVersion}</span>
+                  {updateData.previousVersion && (
+                    <>
+                      <span className="text-gray-600">{updateData.previousVersion}</span>
+                      <span className="mx-2 text-gray-400">→</span>
+                    </>
+                  )}
+                  <span className="font-semibold text-green-600">
+                    {updateData.newVersion || quote?.QuoteNumber || updateData.updatedQuoteNumber || 'Updated'}
+                  </span>
                 </dd>
               </div>
 
               <div>
                 <dt className="text-sm font-medium text-gray-500">Items Updated</dt>
-                <dd className="text-sm text-gray-900">{updateData.lineItemsUpdated} line items</dd>
+                <dd className="text-sm text-gray-900">{lineItemsCount} line items</dd>
               </div>
 
               <div>
                 <dt className="text-sm font-medium text-gray-500">Total Amount</dt>
                 <dd className="text-sm text-gray-900 font-semibold">
-                  {formatCurrency(updateData.totalAmount, updateData.currency)}
+                  {formatCurrency(totalAmount, currency)}
                 </dd>
               </div>
 
@@ -96,11 +137,11 @@ export default function QuoteUpdateSuccess({
                 <dt className="text-sm font-medium text-gray-500">Status</dt>
                 <dd className="text-sm">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    updateData.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
-                    updateData.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
+                    status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
+                    status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {updateData.status}
+                    {status}
                   </span>
                 </dd>
               </div>
@@ -108,7 +149,7 @@ export default function QuoteUpdateSuccess({
               <div>
                 <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
                 <dd className="text-sm text-gray-900">
-                  {new Date(updateData.lastUpdated).toLocaleString()}
+                  {getFormattedDate()}
                 </dd>
               </div>
             </dl>
@@ -144,7 +185,7 @@ export default function QuoteUpdateSuccess({
         {/* Additional Info */}
         <div className="text-center">
           <p className="text-sm text-gray-500">
-            Quote ID: <span className="font-mono text-xs">{updateData.quoteId}</span>
+            Quote ID: <span className="font-mono text-xs">{quoteId}</span>
           </p>
         </div>
       </div>
