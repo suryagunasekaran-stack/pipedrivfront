@@ -74,6 +74,32 @@ interface UploadedFile {
   uploadMessage?: string;
 }
 
+interface InvoiceCreationResponse {
+  success: boolean;
+  projectNumber: string;
+  invoices: {
+    invoiceId: string;
+    invoiceNumber: string;
+    total: number;
+    fromQuote: string;
+    status: string;
+  }[];
+  quoteUpdates: {
+    quoteId: string;
+    quoteNumber: string;
+    success: boolean;
+    updateType: string;
+    fullyInvoiced: boolean;
+    invoiceNumber: string;
+  }[];
+  summary: {
+    invoicesCreated: number;
+    quotesProcessed: number;
+    quotesUpdated: number;
+    quotesFailed: number;
+  };
+}
+
 function CreateInvoiceContent() {
   const searchParams = useSearchParams();
   const companyId = searchParams.get('companyId');
@@ -88,6 +114,7 @@ function CreateInvoiceContent() {
   const [authAttempted, setAuthAttempted] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [invoiceCreationResult, setInvoiceCreationResult] = useState<InvoiceCreationResponse | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
@@ -269,22 +296,19 @@ function CreateInvoiceContent() {
       errors.forEach(error => toast.error(error));
     }
 
-    // Add valid files and simulate upload
+    // Add valid files and mark as successful immediately
     if (newFiles.length > 0) {
-      setUploadedFiles(prev => [...prev, ...newFiles]);
+      const successfulFiles = newFiles.map(file => ({
+        ...file,
+        uploadStatus: 'success' as const,
+        uploadMessage: 'Upload successful'
+      }));
       
-      // Simulate file upload success after a short delay
-      newFiles.forEach((uploadedFile, index) => {
-        setTimeout(() => {
-          setUploadedFiles(prev => 
-            prev.map(uf => 
-              uf.file.name === uploadedFile.file.name 
-                ? { ...uf, uploadStatus: 'success', uploadMessage: 'Upload successful' }
-                : uf
-            )
-          );
-          toast.success(`${uploadedFile.file.name} uploaded successfully`);
-        }, 1000 + (index * 500)); // Stagger uploads for realistic feel
+      setUploadedFiles(prev => [...prev, ...successfulFiles]);
+      
+      // Show success messages
+      successfulFiles.forEach((uploadedFile) => {
+        toast.success(`${uploadedFile.file.name} uploaded successfully`);
       });
     }
 
@@ -334,22 +358,36 @@ function CreateInvoiceContent() {
     try {
       let response;
 
+      // Debug logging
+      console.log('uploadedFiles state:', uploadedFiles);
+      console.log('uploadedFiles.length:', uploadedFiles.length);
+      
+      // Filter for successfully uploaded files only
+      const successfullyUploadedFiles = uploadedFiles.filter(uf => uf.uploadStatus === 'success');
+      console.log('Successfully uploaded files:', successfullyUploadedFiles);
+      console.log('Files condition:', successfullyUploadedFiles.length > 0);
+      console.log('About to check condition - will use:', successfullyUploadedFiles.length > 0 ? 'FORMDATA' : 'JSON');
+
       // Check if there are uploaded files
-      if (uploadedFiles.length > 0) {
+      if (successfullyUploadedFiles.length > 0) {
+        console.log('✅ USING FORMDATA PATH - Files detected!');
         // Use multipart/form-data for requests with PDF attachments
         const formData = new FormData();
         formData.append('projectNumber', projectData?.projectNumber || '');
+        formData.append('companyId', companyId || '');
         formData.append('selectedItems', JSON.stringify(selectedItemsData));
         
-        // Append all uploaded files
-        uploadedFiles.forEach((uploadedFile) => {
+        // Append all successfully uploaded files
+        successfullyUploadedFiles.forEach((uploadedFile) => {
           formData.append('files', uploadedFile.file);
         });
 
         console.log('Sending multipart request with files:', {
           projectNumber: projectData?.projectNumber,
+          companyId: companyId,
           selectedItems: selectedItemsData,
-          fileCount: uploadedFiles.length
+          fileCount: successfullyUploadedFiles.length,
+          fileNames: successfullyUploadedFiles.map(f => f.file.name)
         });
 
         response = await fetch('http://localhost:3000/api/xero/create-project-invoice', {
@@ -358,9 +396,11 @@ function CreateInvoiceContent() {
           credentials: 'include'
         });
       } else {
+        console.log('❌ USING JSON PATH - No files detected or files not ready');
         // Use JSON for requests without files
         const payload = {
           projectNumber: projectData?.projectNumber,
+          companyId: companyId,
           selectedItems: selectedItemsData,
           uploadedFiles: []
         };
@@ -382,15 +422,13 @@ function CreateInvoiceContent() {
         throw new Error(`Failed to create invoice: ${response.status} ${errorText}`);
       }
 
-      const result = await response.json();
+      const result: InvoiceCreationResponse = await response.json();
       console.log('Invoice creation response:', result);
       
-      toast.success('Invoice created successfully!');
+      // Set the success result to display success UI
+      setInvoiceCreationResult(result);
       
-      // You can add additional success handling here, such as:
-      // - Redirecting to a success page
-      // - Showing invoice details
-      // - Clearing selections
+      toast.success('Invoice created successfully!');
       
     } catch (error) {
       console.error('Failed to create invoice:', error);
@@ -430,6 +468,182 @@ function CreateInvoiceContent() {
         error="No project data available"
         onRetry={() => window.location.reload()}
       />
+    );
+  }
+
+  // Success state
+  if (invoiceCreationResult) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="py-6">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-semibold text-gray-900">Invoice Created Successfully</h1>
+                  <p className="mt-1 text-sm text-gray-500">Your invoice has been generated and is ready for review</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Invoices Created</p>
+                  <p className="text-2xl font-semibold text-green-600">{invoiceCreationResult.summary.invoicesCreated}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Quotes Processed</p>
+                  <p className="text-2xl font-semibold text-blue-600">{invoiceCreationResult.summary.quotesProcessed}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Quotes Updated</p>
+                  <p className="text-2xl font-semibold text-blue-600">{invoiceCreationResult.summary.quotesUpdated}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Failed</p>
+                  <p className="text-2xl font-semibold text-red-600">{invoiceCreationResult.summary.quotesFailed}</p>
+                </div>
+              </div>
+
+              {/* Invoice Details */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice Details</h2>
+                <div className="space-y-4">
+                  {invoiceCreationResult.invoices.map((invoice, index) => (
+                    <div key={invoice.invoiceId} className="border border-gray-200 rounded-lg p-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Invoice Number</p>
+                          <p className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Amount</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formatCurrency(invoice.total, projectData?.summary.currency)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Status</p>
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            invoice.status === 'DRAFT' 
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : invoice.status === 'SENT'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {invoice.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-sm text-gray-500">Created from Quote</p>
+                        <p className="text-sm font-medium text-gray-900">{invoice.fromQuote}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quote Updates */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Quote Updates</h2>
+                <div className="space-y-4">
+                  {invoiceCreationResult.quoteUpdates.map((update, index) => (
+                    <div key={update.quoteId} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{update.quoteNumber}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Update Type: {update.updateType} • Fully Invoiced: {update.fullyInvoiced ? 'Yes' : 'No'}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Invoice: {update.invoiceNumber}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {update.success ? (
+                            <div className="flex items-center text-green-600">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-sm font-medium">Success</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-red-600">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              <span className="text-sm font-medium">Failed</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Project Info */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Project Information</h2>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-500">Project Number</p>
+                    <p className="text-lg font-semibold text-gray-900">{invoiceCreationResult.projectNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Company ID</p>
+                    <p className="text-sm font-medium text-gray-900">{companyId}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Next Steps</h2>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setInvoiceCreationResult(null)}
+                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Create Another Invoice
+                  </button>
+                  <button
+                    onClick={() => window.history.back()}
+                    className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    Go Back
+                  </button>
+                  <button
+                    onClick={() => router.push('/admin/dashboard')}
+                    className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    Dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -505,7 +719,9 @@ function CreateInvoiceContent() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Quotes & Line Items</h2>
               <div className="space-y-4">
-                {projectData.quotes.map((quote, quoteIndex) => (
+                {projectData.quotes
+                  .filter(quote => quote.Status === 'DRAFT' || quote.Status === 'ACCEPTED')
+                  .map((quote, quoteIndex) => (
                   <div key={quote.QuoteID} className="border border-gray-200 rounded-lg">
                     {/* Quote Header */}
                     <button
