@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import QuoteUpdateSuccess from '../components/QuoteUpdateSuccess';
 import { useToast } from '../hooks/useToastNew';
-import { useAuth } from '../hooks/useAuth';
 import { useQuotationData } from '../hooks/useQuotationData';
 import { REDIRECT_DELAY, DEFAULT_PIPEDRIVE_DOMAIN } from '../constants';
 import { api } from '../utils/apiClient';
@@ -28,35 +27,11 @@ function UpdateQuotationContent() {
   const router = useRouter();
   
   const [updatingQuote, setUpdatingQuote] = useState(false);
-  const [authAttempted, setAuthAttempted] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState<UpdateQuoteResponse['data'] | null>(null);
 
   // Custom hooks
-  const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
   const toast = useToast();
   const { quotationData, comparisonAnalysis, loading, error, refetch } = useQuotationData(dealId, companyId);
-
-  // Check authentication on mount
-  useEffect(() => {
-    if (authAttempted) return;
-    
-    const verifyAuth = async () => {
-      try {
-        setAuthAttempted(true);
-        
-        const authResponse = await checkAuth(companyId || undefined);
-        if (!authResponse.authenticated) {
-          handleAuthRedirect(authResponse);
-          return;
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        toast.error('Authentication check failed. Please try again.');
-      }
-    };
-
-    verifyAuth();
-  }, [authAttempted, checkAuth, handleAuthRedirect, companyId, toast]);
 
   // Handle update quote functionality
   const handleUpdateQuote = async () => {
@@ -89,62 +64,19 @@ function UpdateQuotationContent() {
         // Include comparison mismatches for context
         comparisonMismatches: comparisonAnalysis?.productComparison?.mismatches
       };
-
-      // LOG THE PAYLOAD BEING SENT
-      console.log('=== UPDATE QUOTE PAYLOAD BEING SENT ===');
-      console.log(JSON.stringify(updatePayload, null, 2));
-      console.log('=== FULL QUOTATION DATA CONTEXT ===');
-      console.log('Products:', quotationData.products);
-      console.log('Xero Quotation:', quotationData.xeroQuotation);
-      console.log('Comparison Analysis:', comparisonAnalysis);
-      console.log('=== END PAYLOAD LOG ===');
       
       const response = await api.updateXeroQuote(updatePayload);
-      
-      console.log('=== UPDATE QUOTE RESPONSE ===');
-      console.log(JSON.stringify(response, null, 2));
-      console.log('=== END RESPONSE LOG ===');
       
       // Show success component instead of toast and redirect
       setUpdateSuccess(response.data);
 
     } catch (error) {
-      console.error('=== UPDATE QUOTE ERROR ===', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update quote';
       toast.error(errorMessage);
     } finally {
       setUpdatingQuote(false);
     }
   };
-
-  // Debug: Log the full response payload
-  useEffect(() => {
-    if (quotationData) {
-      console.log('=== FULL QUOTATION DATA PAYLOAD ===');
-      console.log(JSON.stringify(quotationData, null, 2));
-      console.log('=== END PAYLOAD ===');
-    }
-    
-    if (comparisonAnalysis) {
-      console.log('=== COMPARISON ANALYSIS ===');
-      console.log(JSON.stringify(comparisonAnalysis, null, 2));
-      console.log('=== END COMPARISON ANALYSIS ===');
-    }
-
-    if (quotationData?.products) {
-      console.log('=== PRODUCT DATA ===');
-      quotationData.products.forEach((product, index) => {
-        console.log(`Product ${index}:`, {
-          name: product.name,
-          quantity: product.quantity,
-          unit_price: product.unit_price,
-          unit_price_type: typeof product.unit_price,
-          sum: product.sum,
-          sum_type: typeof product.sum
-        });
-      });
-    }
-  }, [quotationData, comparisonAnalysis]);
 
   // Show success component if update was successful
   if (updateSuccess) {
@@ -158,7 +90,7 @@ function UpdateQuotationContent() {
   }
 
   // Handle loading state
-  if (loading || isCheckingAuth || !authAttempted) {
+  if (loading) {
     return <SimpleLoader />;
   }
 
@@ -336,15 +268,6 @@ function UpdateQuotationContent() {
                       const discountInfo = comparisonAnalysis?.productComparison?.discountAnalysis?.find(
                         d => d.productIndex === (index + 1) || d.productName === product.name
                       );
-                      // Debug: Log the matching attempt
-                      if (comparisonAnalysis?.productComparison?.discountAnalysis && comparisonAnalysis.productComparison.discountAnalysis.length > 0) {
-                        console.log('Pipedrive Product Matching:', {
-                          productIndex: index + 1,
-                          productName: product.name,
-                          discountAnalysis: comparisonAnalysis.productComparison.discountAnalysis,
-                          matchFound: !!discountInfo
-                        });
-                      }
                       return (
                         <tr key={product.id} className={getComparisonItemColor(
                           product.id, 
@@ -401,15 +324,6 @@ function UpdateQuotationContent() {
                         const discountInfo = comparisonAnalysis?.productComparison?.discountAnalysis?.find(
                           d => d.productIndex === (index + 1) || d.productName === item.Description
                         );
-                        // Debug: Log the matching attempt
-                        if (comparisonAnalysis?.productComparison?.discountAnalysis && comparisonAnalysis.productComparison.discountAnalysis.length > 0) {
-                          console.log('Xero Product Matching:', {
-                            productIndex: index + 1,
-                            description: item.Description,
-                            discountAnalysis: comparisonAnalysis.productComparison.discountAnalysis,
-                            matchFound: !!discountInfo
-                          });
-                        }
                         return (
                           <tr key={index} className={
                             comparisonAnalysis?.removedItems?.find(i => i.Description === item.Description) ? 'bg-red-50' : ''
@@ -426,32 +340,32 @@ function UpdateQuotationContent() {
                         );
                       })}
                     </tbody>
-                                          <tfoot className="bg-gray-50">
-                        <tr>
-                          <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
-                            Subtotal
-                          </td>
-                          <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                            {formatCurrency(quotationData.xeroQuotation.subTotal)}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
-                            Tax
-                          </td>
-                          <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                            {formatCurrency(quotationData.xeroQuotation.totalTax)}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td colSpan={3} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
-                            Total
-                          </td>
-                          <td className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
-                            {formatCurrency(quotationData.xeroQuotation.total)}
-                          </td>
-                        </tr>
-                      </tfoot>
+                    <tfoot className="bg-gray-50">
+                      <tr>
+                        <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
+                          Subtotal
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                          {formatCurrency(quotationData.xeroQuotation.subTotal)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={3} className="px-4 py-2 text-sm text-gray-700 text-right">
+                          Tax
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                          {formatCurrency(quotationData.xeroQuotation.totalTax)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={3} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
+                          Total
+                        </td>
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
+                          {formatCurrency(quotationData.xeroQuotation.total)}
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               ) : (

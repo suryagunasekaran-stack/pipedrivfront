@@ -8,7 +8,6 @@ import XeroConnectionStatus from '../components/XeroConnectionStatus';
 import { usePipedriveData } from '../hooks/usePipedriveData';
 import { useXeroStatus } from '../hooks/useXeroStatus';
 import { useToast } from '../hooks/useToastNew';
-import { useAuth } from '../hooks/useAuth';
 import { ERROR_MESSAGES, API_ENDPOINTS, DEFAULT_PIPEDRIVE_DOMAIN, REDIRECT_DELAY } from '../constants';
 import { XeroQuoteResponse } from '../types/pipedrive';
 import { apiCall } from '../utils/apiClient';
@@ -89,8 +88,8 @@ function PipedriveDataViewContent() {
     }).format(value);
   };
 
-  // Handle loading state (including auth check)
-  if (loading ) {
+  // Handle loading state
+  if (loading) {
     return <SimpleLoader/>;
   }
 
