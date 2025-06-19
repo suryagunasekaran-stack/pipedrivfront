@@ -1,29 +1,11 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense } from "react";
 
 function PipedriveSuccessContent() {
-  const [companyInfo, setCompanyInfo] = useState<any>(null);
-  const searchParams = useSearchParams();
 
-  useEffect(() => {
-    // You can fetch company info here if needed
-    // For now, we'll just show a success message
-    const company = searchParams.get('company');
-    if (company) {
-      setCompanyInfo({ name: decodeURIComponent(company) });
-    }
-  }, [searchParams]);
-
-  const handleClose = () => {
-    // Close the window if it was opened as a popup
-    if (window.opener) {
-      window.close();
-    } else {
-      // Otherwise redirect to main app
-      window.location.href = '/';
-    }
+  const handleGoToPipedrive = () => {
+    window.open('https://app.pipedrive.com/', '_blank');
   };
 
   return (
@@ -48,31 +30,26 @@ function PipedriveSuccessContent() {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Successfully Connected!
+            Success!
           </h1>
           
           <p className="text-gray-600 mb-6">
-            Your Pipedrive account has been connected successfully.
-            {companyInfo && (
-              <span className="block mt-2 font-medium">
-                Connected to: {companyInfo.name}
-              </span>
-            )}
+            Operation completed successfully.
           </p>
         </div>
 
         <div className="space-y-4">
           <button
-            onClick={handleClose}
+            onClick={handleGoToPipedrive}
             className="w-full py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
           >
-            Continue
+            Go to Pipedrive
           </button>
         </div>
 
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            You can now close this window or continue to the application
+            Click the button above to access your Pipedrive account
           </p>
         </div>
       </div>

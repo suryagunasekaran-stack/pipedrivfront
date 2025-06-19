@@ -1,32 +1,14 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState, Suspense } from 'react';
+import { Suspense } from 'react';
 
 function PipedriveErrorContent() {
-  const [errorMessage, setErrorMessage] = useState<string>('');
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  useEffect(() => {
-    const error = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
-    
-    if (errorDescription) {
-      setErrorMessage(decodeURIComponent(errorDescription));
-    } else if (error) {
-      setErrorMessage(decodeURIComponent(error));
-    } else {
-      setErrorMessage('An unexpected error occurred during authentication');
-    }
-  }, [searchParams]);
-
-  const handleTryAgain = () => {
-    router.push('/auth/pipedrive');
+  const handleGoBack = () => {
+    window.history.back();
   };
 
-  const handleContactSupport = () => {
-    window.location.href = 'mailto:support@yourcompany.com';
+  const handleGoToPipedrive = () => {
+    window.open('https://app.pipedrive.com/', '_blank');
   };
 
   return (
@@ -51,39 +33,33 @@ function PipedriveErrorContent() {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Connection Failed
+            Error
           </h1>
           
           <p className="text-gray-600 mb-6">
-            We couldn't connect to your Pipedrive account.
+            Something went wrong. Please try again.
           </p>
-
-          {errorMessage && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md mb-6">
-              {errorMessage}
-            </div>
-          )}
         </div>
 
         <div className="space-y-3">
           <button
-            onClick={handleTryAgain}
+            onClick={handleGoBack}
             className="w-full py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors"
           >
-            Try Again
+            Go Back
           </button>
 
           <button
-            onClick={handleContactSupport}
+            onClick={handleGoToPipedrive}
             className="w-full py-2 px-4 text-sm text-gray-500 hover:text-gray-700 transition-colors"
           >
-            Contact Support
+            Go to Pipedrive
           </button>
         </div>
 
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            If the problem persists, please contact our support team
+            Click above to navigate away from this page
           </p>
         </div>
       </div>
