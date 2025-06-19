@@ -3,7 +3,6 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
 import XeroConnectionStatus from '../components/XeroConnectionStatus';
 import { usePipedriveData } from '../hooks/usePipedriveData';
@@ -15,15 +14,6 @@ import { XeroQuoteResponse } from '../types/pipedrive';
 import { apiCall } from '../utils/apiClient';
 import SimpleLoader from '../components/SimpleLoader';
 import { calculateProductSummary, calculateProductFinancials } from '../utils/calculations';
-
-// Import new UI components
-import { 
-  PageLayout, PageHeader, PageContent, ContentGrid, MainContent, Sidebar,
-  Card, CardHeader, CardContent,
-  Button,
-  StatCard, InfoItem, AlertBox,
-  DataRow, DetailCard
-} from '../components/ui';
 
 /**
  * Main page component for displaying Pipedrive data
@@ -49,46 +39,10 @@ function PipedriveDataViewContent() {
   const xeroJustConnected = searchParams.get('xeroJustConnected');
   const router = useRouter();
   
-  // State to track if we've already attempted authentication
-  const [authAttempted, setAuthAttempted] = useState(false);
-  const [creatingQuote, setCreatingQuote] = useState(false);
-
-  // Authentication handling
-  const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
-
   // Custom hooks for data fetching and state management
   const { data, loading, error, refetch } = usePipedriveData(dealId, companyId);
-  const { 
-    xeroConnected, 
-    loading: xeroStatusLoading, 
-    error: xeroStatusError, 
-    refetchStatus 
-  } = useXeroStatus(companyId);
   const toast = useToast();
 
-  // Check authentication on mount - only once
-  useEffect(() => {
-    if (authAttempted) return; // Prevent multiple auth attempts
-    
-    const verifyAuth = async () => {
-      try {
-        setAuthAttempted(true);
-        
-        const authResponse = await checkAuth(companyId || undefined);
-        if (!authResponse.authenticated) {
-          handleAuthRedirect(authResponse);
-          return;
-        }
-
-        // Don't auto-redirect to Xero auth - let user decide
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        toast.error('Authentication check failed. Please try again.');
-      }
-    };
-
-    verifyAuth();
-  }, [authAttempted, checkAuth, handleAuthRedirect, companyId, toast]);
 
   // Handle create quote functionality
   const handleCreateQuote = async () => {
@@ -96,26 +50,12 @@ function PipedriveDataViewContent() {
       toast.error('Missing Pipedrive Deal ID or Company ID');
       return;
     }
-
-    if (!xeroConnected) {
-      toast.error('Not connected to Xero. Please connect to Xero first.');
-      return;
-    }
-
-    setCreatingQuote(true);
     
     try {
       // Include user info and additional parameters from query params
       const requestBody = {
         pipedriveCompanyId: companyId,
         pipedriveDealId: dealId,
-        // Include user info from query params
-        ...(userId && { userId }),
-        ...(userEmail && { userEmail }),
-        ...(userName && { userName }),
-        ...(tenantId && { tenantId }),
-        ...(xeroConnectedParam && { xeroConnected: xeroConnectedParam === 'true' }),
-        ...(xeroJustConnected && { xeroJustConnected: xeroJustConnected === 'true' }),
       };
 
       const responseData: XeroQuoteResponse = await apiCall(API_ENDPOINTS.XERO_QUOTE, {
@@ -138,13 +78,6 @@ function PipedriveDataViewContent() {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create quote';
       toast.error(errorMessage);
       
-      // If it's an auth error, refresh the Xero status
-      if (errorMessage.includes('auth') || errorMessage.includes('token')) {
-        toast.info('Refreshing Xero connection status...');
-        refetchStatus();
-      }
-    } finally {
-      setCreatingQuote(false);
     }
   };
 
@@ -157,23 +90,10 @@ function PipedriveDataViewContent() {
   };
 
   // Handle loading state (including auth check)
-  if (loading || isCheckingAuth || xeroStatusLoading || !authAttempted) {
+  if (loading ) {
     return <SimpleLoader/>;
   }
 
-  // Handle error state with retry functionality
-  if (error || xeroStatusError) {
-    return (
-      <ErrorDisplay 
-        error={error || xeroStatusError || 'An error occurred'} 
-        onRetry={() => {
-          refetch();
-          refetchStatus();
-          setAuthAttempted(false); // Allow retry of auth
-        }} 
-      />
-    );
-  }
 
   // Handle no data state
   if (!data) {
@@ -182,8 +102,6 @@ function PipedriveDataViewContent() {
         error="No data found. Please check your deal ID and company ID."
         onRetry={() => {
           refetch();
-          refetchStatus();
-          setAuthAttempted(false); // Allow retry of auth
         }}
       />
     );
@@ -193,7 +111,7 @@ function PipedriveDataViewContent() {
   const existingQuoteNumber = data.dealDetails?.["5016d4ba7c51895eef88fadadff9ddd1301da89e"];
 
   // If quote exists, redirect to quote exists page
-  if (existingQuoteNumber && xeroConnected) {
+  if (existingQuoteNumber) {
     const QuoteExistsPage = require('../components/QuoteExistsPage').default;
     return (
       <QuoteExistsPage
@@ -212,205 +130,156 @@ function PipedriveDataViewContent() {
 
   // Default view - show quotation details with new UI
   return (
-    <PageLayout>
-      <PageHeader 
-        title="Pipedrive Deal Details" 
-        subtitle="Review deal information and create Xero quote"
-      />
-      
-      <PageContent>
-        <ContentGrid>
-          <MainContent>
-            {/* Show special message if uiAction=createQuote */}
-            {uiAction === 'createQuote' && !existingQuoteNumber && (
-              <AlertBox type="info">
-                You've been directed here to create a Xero quote for this Pipedrive deal.
-              </AlertBox>
-            )}
-            
-            {/* Deal Overview */}
-            <Card>
-              <CardHeader title="Deal Overview" />
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <StatCard 
-                    label="Deal Title" 
-                    value={data.dealDetails?.title || 'N/A'} 
-                  />
-                  <StatCard 
-                    label="Currency" 
-                    value={data.dealDetails?.currency || 'N/A'} 
-                  />
-                  <StatCard 
-                    label="Created" 
-                    value={data.dealDetails?.add_time ? new Date(data.dealDetails.add_time).toLocaleDateString() : 'N/A'} 
-                  />
-                  <StatCard 
-                    label="Products" 
-                    value={data.dealProducts?.length || 0} 
-                  />
-                </div>
-              </CardContent>
-            </Card>
+    <div className="bg-white px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl">
+        {/* Header Section */}
+        <div className="px-4 sm:px-0">
+          <h3 className="text-base/7 font-semibold text-gray-900">Pipedrive Deal Details</h3>
+          <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Review deal information and create Xero quote</p>
+        </div>
 
-            {/* Organization Details */}
-            <Card>
-              <CardHeader title="Organization Details" />
-              <CardContent className="space-y-3">
-                <DataRow 
-                  label="Organization Name" 
-                  value={data.organizationDetails?.name || 'N/A'} 
-                />
-                <DataRow 
-                  label="Primary Contact" 
-                  value={data.personDetails?.name || 'N/A'} 
-                />
-                <DataRow 
-                  label="Email" 
-                  value={data.personDetails?.email?.map((e: any) => e.value).join(', ') || 'N/A'} 
-                />
-                <DataRow 
-                  label="Phone" 
-                  value={data.personDetails?.phone?.map((p: any) => p.value).join(', ') || 'N/A'} 
-                />
-              </CardContent>
-            </Card>
+        {/* Show special message if uiAction=createQuote */}
+        {uiAction === 'createQuote' && !existingQuoteNumber && (
+          <div className="mt-4 rounded-md bg-blue-50 p-4">
+            <p className="text-sm text-blue-700">
+              You've been directed here to create a Xero quote for this Pipedrive deal.
+            </p>
+          </div>
+        )}
 
-            {/* Products Section */}
-            <Card>
-              <CardHeader title="Products" />
-              <CardContent className="space-y-3">
-                {data.dealProducts && data.dealProducts.length > 0 ? (
-                  <>
-                    {data.dealProducts.map((product: any, index: number) => {
-                      const productCalc = calculateProductFinancials(product);
-                      return (
-                        <DetailCard
-                          key={index}
-                          title={product.name}
-                          subtitle={`Quantity: ${product.quantity} × ${formatCurrency(product.item_price || 0, data.dealDetails?.currency)}`}
-                          value={formatCurrency(productCalc.lineTotal, data.dealDetails?.currency)}
-                          extra={
-                            product.discount && product.discount > 0 && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                Discount: {product.discount}{product.discount_type === 'percentage' ? '%' : ` ${data.dealDetails?.currency}`}
-                              </p>
-                            )
-                          }
-                        />
-                      );
-                    })}
-                    
-                    {/* Financial Summary */}
-                    {(() => {
-                      const summary = calculateProductSummary(data.dealProducts);
-                      return (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-500">Subtotal</span>
-                              <span className="text-sm font-medium text-gray-900">
-                                {formatCurrency(summary.subtotal, data.dealDetails?.currency)}
+        {/* Deal Overview Section */}
+        <div className="mt-6 border-t border-gray-100">
+          <dl className="divide-y divide-gray-100">
+            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm/6 font-medium text-gray-900">Deal Title</dt>
+              <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{data.dealDetails?.title || 'N/A'}</dd>
+            </div>
+            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm/6 font-medium text-gray-900">Currency</dt>
+              <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{data.dealDetails?.currency || 'N/A'}</dd>
+            </div>
+            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm/6 font-medium text-gray-900">Created Date</dt>
+              <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                {data.dealDetails?.add_time ? new Date(data.dealDetails.add_time).toLocaleDateString() : 'N/A'}
+              </dd>
+            </div>
+            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm/6 font-medium text-gray-900">Deal ID</dt>
+              <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{dealId || 'N/A'}</dd>
+            </div>
+          </dl>
+        </div>
+
+        {/* Organization Details Section */}
+        <div className="mt-10">
+          <div className="px-4 sm:px-0">
+            <h3 className="text-base/7 font-semibold text-gray-900">Organization Details</h3>
+            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Contact and company information</p>
+          </div>
+          <div className="mt-6 border-t border-gray-100">
+            <dl className="divide-y divide-gray-100">
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Organization Name</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{data.organizationDetails?.name || 'N/A'}</dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Primary Contact</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{data.personDetails?.name || 'N/A'}</dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Email address</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {data.personDetails?.email?.map((e: any) => e.value).join(', ') || 'N/A'}
+                </dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Phone</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {data.personDetails?.phone?.map((p: any) => p.value).join(', ') || 'N/A'}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        {/* Products Section */}
+        <div className="mt-10">
+          <div className="px-4 sm:px-0">
+            <h3 className="text-base/7 font-semibold text-gray-900">Products</h3>
+            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Deal products and pricing</p>
+          </div>
+          <div className="mt-6 border-t border-gray-100">
+            {data.dealProducts && data.dealProducts.length > 0 ? (
+              <>
+                <dl className="divide-y divide-gray-100">
+                  {data.dealProducts.map((product: any, index: number) => {
+                    const productCalc = calculateProductFinancials(product);
+                    return (
+                      <div key={index} className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                        <dt className="text-sm/6 font-medium text-gray-900">{product.name}</dt>
+                        <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                          <div>
+                            <span>Quantity: {product.quantity} × {formatCurrency(product.item_price || 0, data.dealDetails?.currency)}</span>
+                            {product.discount && product.discount > 0 && (
+                              <span className="ml-2 text-xs text-gray-500">
+                                (Discount: {product.discount}{product.discount_type === 'percentage' ? '%' : ` ${data.dealDetails?.currency}`})
                               </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-500">Tax</span>
-                              <span className="text-sm font-medium text-gray-900">
-                                {formatCurrency(summary.totalTax, data.dealDetails?.currency)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center pt-2 border-t">
-                              <span className="text-base font-medium text-gray-900">Total</span>
-                              <span className="text-base font-semibold text-gray-900">
-                                {formatCurrency(summary.grandTotal, data.dealDetails?.currency)}
-                              </span>
-                            </div>
+                            )}
+                            <span className="ml-4 font-medium">{formatCurrency(productCalc.lineTotal, data.dealDetails?.currency)}</span>
                           </div>
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+
+                {/* Financial Summary */}
+                {(() => {
+                  const summary = calculateProductSummary(data.dealProducts);
+                  return (
+                    <div className="mt-6 border-t border-gray-200 pt-6">
+                      <dl className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                          <dt className="text-gray-500">Subtotal</dt>
+                          <dd className="font-medium text-gray-900">
+                            {formatCurrency(summary.subtotal, data.dealDetails?.currency)}
+                          </dd>
                         </div>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  <p className="text-sm text-gray-500 text-center py-8">No products found</p>
-                )}
-              </CardContent>
-            </Card>
-          </MainContent>
-          
-          <Sidebar>
-            {/* Xero Integration */}
-            <Card>
-              <CardHeader title="Xero Integration" />
-              <CardContent>
-                <XeroConnectionStatus
-                  companyId={companyId}
-                  xeroConnected={xeroConnected}
-                  loading={xeroStatusLoading}
-                  error={xeroStatusError}
-                  onRefreshStatus={refetchStatus}
-                />
-                
-                <div className="mt-6">
-                  <Button
-                    onClick={handleCreateQuote}
-                    disabled={!xeroConnected || creatingQuote}
-                    loading={creatingQuote}
-                    fullWidth
-                  >
-                    {creatingQuote ? 'Creating Xero Quote...' : 'Create Xero Quote'}
-                  </Button>
-                  
-                  {!xeroConnected && (
-                    <p className="text-center text-sm text-gray-600 mt-2">
-                      Please connect to Xero first to enable quote creation
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Deal Information */}
-            <Card>
-              <CardHeader title="Deal Information" />
-              <CardContent className="space-y-3">
-                <InfoItem label="Deal ID" value={dealId || 'N/A'} />
-                <InfoItem label="Company ID" value={companyId || 'N/A'} />
-                <InfoItem label="Deal Title" value={data.dealDetails?.title || 'N/A'} />
-                <InfoItem label="Created Date" value={
-                  data.dealDetails?.add_time 
-                    ? new Date(data.dealDetails.add_time).toLocaleDateString() 
-                    : 'N/A'
-                } />
-              </CardContent>
-            </Card>
-            
-            {/* Actions */}
-            <Card>
-              <CardHeader title="Actions" />
-              <CardContent className="space-y-3">
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => {
-                    const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || DEFAULT_PIPEDRIVE_DOMAIN;
-                    window.open(`https://${pipedriveDomain}/deal/${dealId}`, '_blank');
-                  }}
-                >
-                  View in Pipedrive
-                </Button>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => window.history.back()}
-                >
-                  Go Back
-                </Button>
-              </CardContent>
-            </Card>
-          </Sidebar>
-        </ContentGrid>
-      </PageContent>
-    </PageLayout>
+                        <div className="flex justify-between text-sm">
+                          <dt className="text-gray-500">Tax</dt>
+                          <dd className="font-medium text-gray-900">
+                            {formatCurrency(summary.totalTax, data.dealDetails?.currency)}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-200 pt-4 text-base">
+                          <dt className="font-medium text-gray-900">Total</dt>
+                          <dd className="font-semibold text-gray-900">
+                            {formatCurrency(summary.grandTotal, data.dealDetails?.currency)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <p className="px-4 py-8 text-sm text-gray-500 text-center">No products found</p>
+            )}
+          </div>
+        </div>
+
+        {/* Create Quote Button */}
+        <div className="mt-10 flex justify-center">
+          <button
+            onClick={handleCreateQuote}
+            className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          >
+            Create Quote
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
