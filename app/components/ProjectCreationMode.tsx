@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ProjectData, CreationResult } from '../types/pipedrive';
+import { ProjectData, CreationResult, FetchedPipedriveData } from '../types/pipedrive';
 import ProjectCheckItems from './ProjectCheckItems';
 import ProjectCreationActions from './ProjectCreationActions';
 import { validateProjectData } from '../utils/projectValidation';
 import { useToast } from '../hooks/useToastNew';
 import { API_ENDPOINTS, PROJECT_REDIRECT_DELAY } from '../constants';
+import { calculateProductSummary, calculateProductFinancials } from '../utils/calculations';
 
 interface XeroProject {
   projectId: string;
@@ -33,6 +34,7 @@ interface XeroProject {
 
 interface ProjectCreationModeProps {
   projectData: ProjectData | null;
+  pipedriveData: FetchedPipedriveData | null;
   dealId: string | null;
   companyId: string | null;
   isLoading: boolean;
@@ -44,6 +46,7 @@ interface ProjectCreationModeProps {
 
 export default function ProjectCreationMode({
   projectData,
+  pipedriveData,
   dealId,
   companyId,
   isLoading,
@@ -67,12 +70,14 @@ export default function ProjectCreationMode({
   // Get xeroProjects from projectData
   const xeroProjects: XeroProject[] = (projectData as any)?.xeroProjects || [];
 
-  // Debug logging to see what data we're receiving
-  console.log('🔍 ProjectCreationMode Debug:');
-  console.log('- projectData:', projectData);
-  console.log('- xeroProjects:', xeroProjects);
-  console.log('- xeroProjects.length:', xeroProjects.length);
-  console.log('- Raw projectData keys:', projectData ? Object.keys(projectData) : 'null');
+  // Define required field IDs
+  const requiredFieldIds = ['department', 'vessel-name', 'location', 'sales-in-charge'];
+  
+  // Check for missing required fields
+  const missingFields = checkItems.filter(item => 
+    requiredFieldIds.includes(item.id) && !item.isValid
+  );
+  const hasAllRequiredFields = missingFields.length === 0;
 
   // Filter projects based on search term
   const filteredProjects = useMemo(() => {
@@ -122,14 +127,6 @@ export default function ProjectCreationMode({
     const loadingToast = toast.loading('Linking project...');
     
     try {
-      console.log('🚀 Sending payload to link existing project:');
-      console.log('- Current payload:', {
-        pipedriveDealId: dealId,
-        pipedriveCompanyId: companyId,
-        xeroProjectId: selectedProject.projectId
-      });
-      console.log('- Available selectedProject data:', selectedProject);
-      
       const response = await fetch(API_ENDPOINTS.PROJECT_LINK_EXISTING, {
         method: 'POST',
         headers: {
@@ -211,22 +208,31 @@ export default function ProjectCreationMode({
     }
   }, [isDropdownOpen]);
 
+  // Format currency helper
+  const formatCurrency = (value: number, currency: string = 'USD'): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(value);
+  };
+
   return (
-    <div className="w-full max-w-4xl bg-white shadow-xl rounded-lg border border-gray-200 overflow-hidden">
-      <div className="px-6 py-5 bg-black">
-        <h1 className="text-xl font-semibold text-white">Project Setup</h1>
-        <p className="text-sm text-gray-300 mt-1">
-          Create a new project or link to an existing one
-        </p>
-      </div>
-      
-      <div className="p-6">
+    <div className="px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl">
+        {/* Header Section */}
+        <div className="px-4 sm:px-0">
+          <h3 className="text-base/7 font-semibold text-gray-900">Project Setup</h3>
+          <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">
+            Create a new project or link to an existing one
+          </p>
+        </div>
+
         {/* Mode Selection */}
-        <div className="flex space-x-2 mb-6">
+        <div className="mt-6 flex space-x-2">
           <button
-            className={`flex-1 py-3 px-4 text-sm font-medium rounded-lg transition-colors ${
+            className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
               mode === 'create'
-                ? 'bg-black text-white'
+                ? 'bg-indigo-600 text-white hover:bg-indigo-500'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             onClick={() => handleModeChange('create')}
@@ -235,54 +241,204 @@ export default function ProjectCreationMode({
             Create New Project
           </button>
           <button
-            className={`flex-1 py-3 px-4 text-sm font-medium rounded-lg transition-colors ${
+            className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-colors ${
               mode === 'link'
-                ? 'bg-black text-white'
+                ? 'bg-indigo-600 text-white hover:bg-indigo-500'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             onClick={() => handleModeChange('link')}
             disabled={isProcessing || !xeroProjects || xeroProjects.length === 0}
           >
-            Link Existing Project ({xeroProjects.length} available)
+            Link Existing Project ({xeroProjects.length})
           </button>
         </div>
 
-        {/* Create Mode */}
-        {mode === 'create' && (
-          <>
-            <ProjectCheckItems checkItems={checkItems} />
-            
-            <div className="mt-6 space-y-4">
-              {hasValidProjectData && (
-                <>
-                  {allChecksPassed ? (
-                    <button 
-                      onClick={onCreateProject}
-                      disabled={isLoading || !!error || isCreating || !hasValidProjectData}
-                      className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isCreating ? 'Creating Project...' : 'Confirm & Create Project'}
-                    </button>
-                  ) : (
-                    <div className="text-sm text-gray-700 p-4 bg-gray-50 border border-gray-200 rounded-md text-center">
-                      <p>
-                        Please ensure all required Pipedrive deal information (marked as required) 
-                        is complete in Pipedrive and refresh this page to enable project creation.
-                      </p>
+        {/* Deal Overview Section */}
+        <div className="mt-10">
+          <div className="px-4 sm:px-0">
+            <h3 className="text-base/7 font-semibold text-gray-900">Deal Overview</h3>
+            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Pipedrive deal information</p>
+          </div>
+          <div className="mt-6 border-t border-gray-100">
+            <dl className="divide-y divide-gray-100">
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Deal Title</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {pipedriveData?.dealDetails?.title || 'N/A'}
+                </dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Currency</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {pipedriveData?.dealDetails?.currency || 'N/A'}
+                </dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Created Date</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {pipedriveData?.dealDetails?.add_time ? new Date(pipedriveData.dealDetails.add_time).toLocaleDateString() : 'N/A'}
+                </dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Deal ID</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{dealId || 'N/A'}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        {/* Organization Details Section */}
+        <div className="mt-10">
+          <div className="px-4 sm:px-0">
+            <h3 className="text-base/7 font-semibold text-gray-900">Organization Details</h3>
+            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Contact and company information</p>
+          </div>
+          <div className="mt-6 border-t border-gray-100">
+            <dl className="divide-y divide-gray-100">
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Organization Name</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {pipedriveData?.organizationDetails?.name || 'N/A'}
+                </dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Primary Contact</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {pipedriveData?.personDetails?.name || 'N/A'}
+                </dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Email address</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {pipedriveData?.personDetails?.email?.map((e: any) => e.value).join(', ') || 'N/A'}
+                </dd>
+              </div>
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Phone</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {pipedriveData?.personDetails?.phone?.map((p: any) => p.value).join(', ') || 'N/A'}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        {/* Products Section */}
+        <div className="mt-10">
+          <div className="px-4 sm:px-0">
+            <h3 className="text-base/7 font-semibold text-gray-900">Products</h3>
+            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Deal products and pricing</p>
+          </div>
+          <div className="mt-6 border-t border-gray-100">
+            {pipedriveData?.dealProducts && pipedriveData.dealProducts.length > 0 ? (
+              <>
+                <dl className="divide-y divide-gray-100">
+                  {pipedriveData.dealProducts.map((product: any, index: number) => {
+                    const productCalc = calculateProductFinancials(product);
+                    return (
+                      <div key={index} className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                        <dt className="text-sm/6 font-medium text-gray-900">{product.name}</dt>
+                        <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                          <div>
+                            <span>Quantity: {product.quantity} × {formatCurrency(product.item_price || 0, pipedriveData?.dealDetails?.currency)}</span>
+                            {product.discount && product.discount > 0 && (
+                              <span className="ml-2 text-xs text-gray-500">
+                                (Discount: {product.discount}{product.discount_type === 'percentage' ? '%' : ` ${pipedriveData?.dealDetails?.currency}`})
+                              </span>
+                            )}
+                            <span className="ml-4 font-medium">{formatCurrency(productCalc.lineTotal, pipedriveData?.dealDetails?.currency)}</span>
+                          </div>
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+
+                {/* Financial Summary */}
+                {(() => {
+                  const summary = calculateProductSummary(pipedriveData.dealProducts);
+                  return (
+                    <div className="mt-6 border-t border-gray-200 pt-6">
+                      <dl className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                          <dt className="text-gray-500">Subtotal</dt>
+                          <dd className="font-medium text-gray-900">
+                            {formatCurrency(summary.subtotal, pipedriveData?.dealDetails?.currency)}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <dt className="text-gray-500">Tax</dt>
+                          <dd className="font-medium text-gray-900">
+                            {formatCurrency(summary.totalTax, pipedriveData?.dealDetails?.currency)}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-200 pt-4 text-base">
+                          <dt className="font-medium text-gray-900">Total</dt>
+                          <dd className="font-semibold text-gray-900">
+                            {formatCurrency(summary.grandTotal, pipedriveData?.dealDetails?.currency)}
+                          </dd>
+                        </div>
+                      </dl>
                     </div>
-                  )}
-                </>
-              )}
-            </div>
-          </>
+                  );
+                })()}
+              </>
+            ) : (
+              <p className="px-4 py-8 text-sm text-gray-500 text-center">No products found</p>
+            )}
+          </div>
+        </div>
+
+        {/* Required Fields Section */}
+        <div className="mt-10">
+          <div className="px-4 sm:px-0">
+            <h3 className="text-base/7 font-semibold text-gray-900">Required Fields Status</h3>
+            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Fields needed for project creation</p>
+          </div>
+          <div className="mt-6 border-t border-gray-100">
+            <ProjectCheckItems checkItems={checkItems} />
+          </div>
+        </div>
+
+        {/* Create Mode Actions */}
+        {mode === 'create' && (
+          <div className="mt-10">
+            {hasValidProjectData && (
+              <>
+                {hasAllRequiredFields ? (
+                  <button 
+                    onClick={onCreateProject}
+                    disabled={isLoading || !!error || isCreating || !hasValidProjectData}
+                    className="w-full rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreating ? 'Creating Project...' : 'Create Project'}
+                  </button>
+                ) : (
+                  <div className="rounded-md bg-yellow-50 p-4">
+                    <div className="flex">
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">Missing Required Fields</h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>The following required fields are missing:</p>
+                          <ul className="mt-2 list-disc pl-5 space-y-1">
+                            {missingFields.map((field, index) => (
+                              <li key={index}>{field.label}</li>
+                            ))}
+                          </ul>
+                          <p className="mt-2">Please complete these fields in Pipedrive before creating the project.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
 
-        {/* Link Mode */}
+        {/* Link Mode Actions */}
         {mode === 'link' && (
-          <div className="space-y-4">
-            {/* Validation Checks */}
-            <ProjectCheckItems checkItems={checkItems} />
-            
+          <div className="mt-10 space-y-4">
             {/* Searchable Project Dropdown */}
             <div className="searchable-dropdown relative">
               <label htmlFor="project-search" className="block text-sm font-medium text-gray-700 mb-2">
@@ -302,7 +458,7 @@ export default function ProjectCreationMode({
                     }
                   }}
                   onFocus={() => setIsDropdownOpen(true)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-gray-900 placeholder-gray-500 bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-500 bg-white"
                   disabled={isLinking}
                 />
                 
@@ -353,44 +509,38 @@ export default function ProjectCreationMode({
 
             {/* Selected Project Info */}
             {selectedProject && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="rounded-md bg-gray-50 p-4">
                 <h4 className="font-medium text-gray-900 mb-3">Selected Project</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <dl className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Code:</span>
-                    <span className="ml-2 text-gray-900">{selectedProject.projectCode}</span>
+                    <dt className="font-medium text-gray-500">Code:</dt>
+                    <dd className="mt-1 text-gray-900">{selectedProject.projectCode}</dd>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Status:</span>
-                    <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedProject.status === 'ACTIVE' || selectedProject.status === 'INPROGRESS'
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {selectedProject.status}
-                    </span>
+                    <dt className="font-medium text-gray-500">Status:</dt>
+                    <dd className="mt-1">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        selectedProject.status === 'ACTIVE' || selectedProject.status === 'INPROGRESS'
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedProject.status}
+                      </span>
+                    </dd>
                   </div>
                   <div className="col-span-2">
-                    <span className="font-medium text-gray-700">Name:</span>
-                    <span className="ml-2 text-gray-900">{selectedProject.name}</span>
+                    <dt className="font-medium text-gray-500">Name:</dt>
+                    <dd className="mt-1 text-gray-900">{selectedProject.name}</dd>
                   </div>
                   {selectedProject.estimate && (
                     <div>
-                      <span className="font-medium text-gray-700">Estimate:</span>
-                      <span className="ml-2 text-gray-900">
+                      <dt className="font-medium text-gray-500">Estimate:</dt>
+                      <dd className="mt-1 text-gray-900">
                         {selectedProject.estimate.currency} {selectedProject.estimate.value?.toLocaleString()}
-                      </span>
+                      </dd>
                     </div>
                   )}
-                  {selectedProject.totalToBeInvoiced && (
-                    <div>
-                      <span className="font-medium text-gray-700">To Invoice:</span>
-                      <span className="ml-2 text-gray-900">
-                        {selectedProject.totalToBeInvoiced.currency} {selectedProject.totalToBeInvoiced.value?.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                </dl>
               </div>
             )}
 
@@ -398,7 +548,7 @@ export default function ProjectCreationMode({
             <button
               onClick={handleLinkProject}
               disabled={isLinking || !selectedProject}
-              className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLinking ? 'Linking Project...' : 'Link Selected Project'}
             </button>
@@ -407,12 +557,12 @@ export default function ProjectCreationMode({
 
         {/* Result Display */}
         {displayResult && (
-          <div className={`mt-4 p-3 rounded text-center ${
+          <div className={`mt-6 rounded-md p-4 ${
             displayResult.success 
-              ? 'bg-gray-100 text-gray-700' 
-              : 'bg-gray-100 text-gray-700'
+              ? 'bg-green-50 text-green-800' 
+              : 'bg-red-50 text-red-800'
           }`}>
-            {displayResult.message}
+            <p className="text-sm font-medium">{displayResult.message}</p>
           </div>
         )}
       </div>

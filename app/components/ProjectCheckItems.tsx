@@ -14,41 +14,44 @@ interface ProjectCheckItemsProps {
 export default function ProjectCheckItems({ checkItems }: ProjectCheckItemsProps) {
   if (checkItems.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
+      <p className="px-4 py-8 text-sm text-gray-500 text-center">
         No validation items to display
-      </div>
+      </p>
     );
   }
 
+  // Define which fields are required
+  const requiredFieldIds = ['department', 'vessel-name', 'location', 'sales-in-charge'];
+
   return (
-    <div className="space-y-1 mb-6">
-      {checkItems.map((item) => (
-        <div 
-          key={item.id} 
-          className="flex items-start py-3 border-b border-gray-200 last:border-b-0"
-        >
-          <div className="shrink-0 mt-1 mr-3 w-6 h-6 flex items-center justify-center">
-            {item.isValid ? (
-              <CheckCircleIcon className="w-6 h-6 text-green-500" />
-            ) : (
-              <XCircleIcon className="w-6 h-6 text-red-400" />
-            )}
-          </div>
-          <div className="flex-grow">
-            <span className="font-medium text-black">{item.label}:</span>
-            <span className={`ml-1 ${
+    <dl className="divide-y divide-gray-100">
+      {checkItems.map((item) => {
+        const isRequired = requiredFieldIds.includes(item.id);
+        return (
+          <div key={item.id} className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            <dt className="text-sm/6 font-medium text-gray-900 flex items-center">
+              <span className="mr-2">
+                {item.isValid ? (
+                  <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                ) : (
+                  <XCircleIcon className="h-5 w-5 text-red-400" />
+                )}
+              </span>
+              {item.label}
+              {isRequired && !item.isValid && (
+                <span className="ml-2 text-xs text-red-600">(Required)</span>
+              )}
+            </dt>
+            <dd className={`mt-1 text-sm/6 sm:col-span-2 sm:mt-0 ${
               item.value 
-                ? 'text-black' 
-                : 'text-gray-500 italic opacity-75'
+                ? 'text-gray-700' 
+                : 'text-gray-400 italic'
             }`}>
               {item.value || 'Not specified'}
-            </span>
-            {!item.isValid && (
-              <span className="text-xs text-red-500 ml-2">(Required)</span>
-            )}
+            </dd>
           </div>
-        </div>
-      ))}
-    </div>
+        );
+      })}
+    </dl>
   );
 }

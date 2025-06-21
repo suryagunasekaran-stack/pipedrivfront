@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePipedriveData } from '../hooks/usePipedriveData';
 import ProjectCreationMode from '../components/ProjectCreationMode';
 import QuoteExistsPage from '../components/QuoteExistsPage';
-import LoadingSpinner from '../components/LoadingSpinner';
+import SimpleLoader from '../components/SimpleLoader';
 import ErrorDisplay from '../components/ErrorDisplay';
 import { CreationResult } from '../types/pipedrive';
 
@@ -26,9 +26,6 @@ function CreateProjectContent() {
   const userId = searchParams.get('userId');
   const userEmail = searchParams.get('userEmail');
   const userName = searchParams.get('userName');
-
-  // Authentication handling
-  const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
 
   // Fetch Pipedrive data to check for existing project
   const { data: pipedriveData, loading: pipedriveLoading, error: pipedriveError } = usePipedriveData(dealId, companyId);
@@ -46,22 +43,6 @@ function CreateProjectContent() {
   // Result state for redirect handling
   const [currentResult, setCurrentResult] = useState<CreationResult | null>(null);
 
-  // Check authentication on mount
-  useEffect(() => {
-    const verifyAuth = async () => {
-      try {
-        const authResponse = await checkAuth(companyId || undefined);
-        if (!authResponse.authenticated) {
-          handleAuthRedirect(authResponse);
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-      }
-    };
-
-    verifyAuth();
-  }, [checkAuth, handleAuthRedirect, companyId]);
-
   // Update current result when creation result changes
   useEffect(() => {
     if (creationResult) {
@@ -75,27 +56,20 @@ function CreateProjectContent() {
     onUpdateResult: setCurrentResult,
   });
 
-  // Loading state (including auth check)
-  if (isLoading || isCheckingAuth || pipedriveLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-white">
-        <LoadingSpinner message={
-          isCheckingAuth ? "Checking authentication..." : 
-          pipedriveLoading ? "Loading deal data..." :
-          "Loading project data..."
-        } />
-      </div>
-    );
+  // Loading state
+  if (isLoading || pipedriveLoading) {
+    return <SimpleLoader />;
   }
 
   // Error state
   if (error || pipedriveError) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-white">
-        <ErrorDisplay
-          error={error || pipedriveError || 'An error occurred'}
-        />
-      </div>
+      <ErrorDisplay
+        error={error || pipedriveError || 'An error occurred'}
+        onRetry={() => {
+          refetch();
+        }}
+      />
     );
   }
 
@@ -109,7 +83,6 @@ function CreateProjectContent() {
   }
 
   // Check if project already exists from the deal's custom field
-  // Using specific custom field hash - TODO: implement company-specific mapping
   const existingProjectNumber = pipedriveData.dealDetails?.["54326aa3421d5bf7cb2ce5a215e5ab986cc50a27"];
 
   // Console log to see the actual data structure
@@ -133,11 +106,12 @@ function CreateProjectContent() {
     );
   }
 
-  // Default view - show project creation workflow with mode selection
+  // Default view - show project creation workflow
   return (
-    <div className="min-h-screen bg-white py-8 px-4 flex flex-col items-center">
+    <div className="bg-white min-h-screen">
       <ProjectCreationMode
         projectData={projectData}
+        pipedriveData={pipedriveData}
         dealId={dealId}
         companyId={companyId}
         isLoading={isLoading}
@@ -151,11 +125,7 @@ function CreateProjectContent() {
 }
 
 function LoadingFallback() {
-  return (
-    <div className="flex justify-center items-center min-h-screen bg-white">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-    </div>
-  );
+  return <SimpleLoader />;
 }
 
 export default function CreateProjectPage() {
