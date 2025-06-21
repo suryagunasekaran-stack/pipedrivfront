@@ -107,7 +107,8 @@ function PipedriveDataViewContent() {
   }
 
   // Check if quote already exists from the deal's custom field
-  const existingQuoteNumber = data.dealDetails?.["5016d4ba7c51895eef88fadadff9ddd1301da89e"];
+  const existingQuoteNumber = data.dealDetails?.customFields?.quoteNumber || 
+                              data.dealDetails?.["5016d4ba7c51895eef88fadadff9ddd1301da89e"]; // Fallback for legacy
 
   // If quote exists, redirect to quote exists page
   if (existingQuoteNumber) {

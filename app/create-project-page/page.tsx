@@ -83,7 +83,8 @@ function CreateProjectContent() {
   }
 
   // Check if project already exists from the deal's custom field
-  const existingProjectNumber = pipedriveData.dealDetails?.["54326aa3421d5bf7cb2ce5a215e5ab986cc50a27"];
+  const existingProjectNumber = pipedriveData.dealDetails?.customFields?.projectNumber || 
+                                pipedriveData.dealDetails?.["54326aa3421d5bf7cb2ce5a215e5ab986cc50a27"]; // Fallback for legacy
 
   // Console log to see the actual data structure
   console.log('Project Page - Deal Details:', pipedriveData.dealDetails);

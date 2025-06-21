@@ -22,10 +22,75 @@ const EXPECTED_VALIDATION_ERRORS = [
 /**
  * Checks if an error message is an expected validation error
  */
-function isExpectedValidationError(errorMessage: string): boolean {
+function isExpectedValidationError(errorMessage: any): boolean {
+  // Ensure errorMessage is a string before calling toLowerCase()
+  if (typeof errorMessage !== 'string') {
+    return false;
+  }
+  
   return EXPECTED_VALIDATION_ERRORS.some(validationMsg => 
     errorMessage.toLowerCase().includes(validationMsg.toLowerCase())
   );
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const dealId = searchParams.get('dealId');
+    const companyId = searchParams.get('companyId');
+
+    if (!dealId || !companyId) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.MISSING_DEAL_ID },
+        { status: 400 }
+      );
+    }
+
+    // Forward GET request to the external API
+    const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PROJECT_CREATE}?dealId=${dealId}&companyId=${companyId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('cookie') || '',
+        'Authorization': request.headers.get('authorization') || '',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+      
+      // Check if this is an expected validation error
+      if (isExpectedValidationError(errorMessage)) {
+        // Log validation errors as warnings, not errors (cleaner logs)
+        console.warn(`⚠️  Expected validation error for deal ${dealId}:`, errorMessage);
+      } else {
+        // Log unexpected errors normally
+        console.error(`❌ Unexpected API error for deal ${dealId}:`, errorMessage);
+      }
+      
+      // Still return the error to the client, but with cleaner server logs
+      return NextResponse.json(
+        { error: errorMessage },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    console.log(`✅ Project data loaded successfully for deal ${dealId}`);
+    return NextResponse.json(data);
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.DATA_FETCH_ERROR;
+    
+    // Log unexpected errors (network issues, etc.)
+    console.error('❌ Unexpected error in project data fetch:', error);
+    
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {

@@ -3,12 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProjectData, CreationResult, FetchedPipedriveData } from '../types/pipedrive';
-import ProjectCheckItems from './ProjectCheckItems';
 import ProjectCreationActions from './ProjectCreationActions';
 import { validateProjectData } from '../utils/projectValidation';
 import { useToast } from '../hooks/useToastNew';
 import { API_ENDPOINTS, PROJECT_REDIRECT_DELAY } from '../constants';
 import { calculateProductSummary, calculateProductFinancials } from '../utils/calculations';
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
 interface XeroProject {
   projectId: string;
@@ -253,72 +253,106 @@ export default function ProjectCreationMode({
           </button>
         </div>
 
-        {/* Deal Overview Section */}
+        {/* Deal Information Section - Combined Overview */}
         <div className="mt-10">
           <div className="px-4 sm:px-0">
-            <h3 className="text-base/7 font-semibold text-gray-900">Deal Overview</h3>
-            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Pipedrive deal information</p>
+            <h3 className="text-base/7 font-semibold text-gray-900">Deal Information</h3>
+            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Complete deal overview with all required fields</p>
           </div>
           <div className="mt-6 border-t border-gray-100">
             <dl className="divide-y divide-gray-100">
+              {/* Basic Deal Info */}
               <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                 <dt className="text-sm/6 font-medium text-gray-900">Deal Title</dt>
                 <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
-                  {pipedriveData?.dealDetails?.title || 'N/A'}
+                  {projectData?.deal?.title || pipedriveData?.dealDetails?.title || 'N/A'}
                 </dd>
               </div>
+              
+              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                <dt className="text-sm/6 font-medium text-gray-900">Deal Value</dt>
+                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                  {projectData?.deal?.value && projectData?.deal?.currency
+                    ? formatCurrency(projectData.deal.value, projectData.deal.currency)
+                    : 'N/A'}
+                </dd>
+              </div>
+              
               <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                 <dt className="text-sm/6 font-medium text-gray-900">Currency</dt>
                 <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
-                  {pipedriveData?.dealDetails?.currency || 'N/A'}
+                  {projectData?.deal?.currency || pipedriveData?.dealDetails?.currency || 'N/A'}
                 </dd>
               </div>
-              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm/6 font-medium text-gray-900">Created Date</dt>
-                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
-                  {pipedriveData?.dealDetails?.add_time ? new Date(pipedriveData.dealDetails.add_time).toLocaleDateString() : 'N/A'}
-                </dd>
-              </div>
+              
               <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                 <dt className="text-sm/6 font-medium text-gray-900">Deal ID</dt>
                 <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">{dealId || 'N/A'}</dd>
               </div>
-            </dl>
-          </div>
-        </div>
-
-        {/* Organization Details Section */}
-        <div className="mt-10">
-          <div className="px-4 sm:px-0">
-            <h3 className="text-base/7 font-semibold text-gray-900">Organization Details</h3>
-            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Contact and company information</p>
-          </div>
-          <div className="mt-6 border-t border-gray-100">
-            <dl className="divide-y divide-gray-100">
+              
+              {/* Organization & Contact Info */}
               <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm/6 font-medium text-gray-900">Organization Name</dt>
+                <dt className="text-sm/6 font-medium text-gray-900">Organization</dt>
                 <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
                   {pipedriveData?.organizationDetails?.name || 'N/A'}
                 </dd>
               </div>
+              
               <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm/6 font-medium text-gray-900">Primary Contact</dt>
+                <dt className="text-sm/6 font-medium text-gray-900">Contact Person</dt>
                 <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
                   {pipedriveData?.personDetails?.name || 'N/A'}
                 </dd>
               </div>
+              
+              {/* Custom Fields with Status Indicators */}
+              {checkItems.filter(item => ['department', 'vessel-name', 'location', 'sales-in-charge', 'quote-number', 'xero-quote'].includes(item.id)).map((item) => (
+                <div key={item.id} className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                  <dt className="text-sm/6 font-medium text-gray-900 flex items-center">
+                    {item.label}
+                    {requiredFieldIds.includes(item.id) && (
+                      <span className="ml-2">
+                        {item.isValid ? (
+                          <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircleIcon className="h-4 w-4 text-red-400" />
+                        )}
+                      </span>
+                    )}
+                  </dt>
+                  <dd className={`mt-1 text-sm/6 sm:col-span-2 sm:mt-0 ${
+                    item.value 
+                      ? 'text-gray-700' 
+                      : 'text-gray-400 italic'
+                  }`}>
+                    {item.value || 'Not specified'}
+                    {requiredFieldIds.includes(item.id) && !item.isValid && (
+                      <span className="ml-2 text-xs text-red-600">(Required)</span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+              
+              {/* Dates */}
               <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm/6 font-medium text-gray-900">Email address</dt>
+                <dt className="text-sm/6 font-medium text-gray-900">Created Date</dt>
                 <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
-                  {pipedriveData?.personDetails?.email?.map((e: any) => e.value).join(', ') || 'N/A'}
+                  {projectData?.deal?.add_time 
+                    ? new Date(projectData.deal.add_time).toLocaleDateString() 
+                    : pipedriveData?.dealDetails?.add_time 
+                    ? new Date(pipedriveData.dealDetails.add_time).toLocaleDateString()
+                    : 'N/A'}
                 </dd>
               </div>
-              <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                <dt className="text-sm/6 font-medium text-gray-900">Phone</dt>
-                <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
-                  {pipedriveData?.personDetails?.phone?.map((p: any) => p.value).join(', ') || 'N/A'}
-                </dd>
-              </div>
+              
+              {projectData?.deal?.expected_close_date && (
+                <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                  <dt className="text-sm/6 font-medium text-gray-900">Expected Close Date</dt>
+                  <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+                    {new Date(projectData.deal.expected_close_date).toLocaleDateString()}
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
         </div>
@@ -386,17 +420,6 @@ export default function ProjectCreationMode({
             ) : (
               <p className="px-4 py-8 text-sm text-gray-500 text-center">No products found</p>
             )}
-          </div>
-        </div>
-
-        {/* Required Fields Section */}
-        <div className="mt-10">
-          <div className="px-4 sm:px-0">
-            <h3 className="text-base/7 font-semibold text-gray-900">Required Fields Status</h3>
-            <p className="mt-1 max-w-2xl text-sm/6 text-gray-500">Fields needed for project creation</p>
-          </div>
-          <div className="mt-6 border-t border-gray-100">
-            <ProjectCheckItems checkItems={checkItems} />
           </div>
         </div>
 

@@ -10,7 +10,7 @@ interface ApiResponse<T = any> {
   authRequired?: 'pipedrive' | 'xero';
   authUrl?: string;
   message?: string;
-  error?: string;
+  error?: string | boolean;
 }
 
 interface ApiCallOptions extends RequestInit {
@@ -35,9 +35,12 @@ export async function apiCall<T = any>(
       ...fetchOptions,
     });
 
-    const data: ApiResponse<T> = await response.json().catch(() => ({
-      error: `HTTP error! status: ${response.status}`
-    }));
+    const data: ApiResponse<T> = await response.json().catch((jsonError) => {
+      console.error('JSON parse error:', jsonError);
+      return {
+        error: `HTTP error! status: ${response.status}`
+      };
+    });
 
     // Handle authentication errors
     if (response.status === 401 && !skipAuthRedirect) {
@@ -52,7 +55,24 @@ export async function apiCall<T = any>(
     }
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+      // Handle cases where data might not be an object with error/message properties
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      if (data && typeof data === 'object') {
+        // Handle string error messages
+        if (typeof data.error === 'string' && data.error.trim()) {
+          errorMessage = data.error;
+        } else if (typeof data.message === 'string' && data.message.trim()) {
+          errorMessage = data.message;
+        } else if (data.error === true) {
+          // Handle boolean error flag - use default message
+          errorMessage = `API request failed with status: ${response.status}`;
+        }
+      } else if (typeof data === 'string') {
+        errorMessage = data;
+      }
+      
+      throw new Error(errorMessage);
     }
 
     // Return the actual data if it's wrapped in a data property, otherwise return the whole response

@@ -8,6 +8,23 @@ export interface FetchedDealDetails {
   add_time?: string; // Issue date
   expected_close_date?: string | null; // Expiry date
   currency?: string;
+  value?: number;
+  // Custom fields object containing all custom field values
+  customFields?: {
+    department?: string;
+    vesselName?: string;
+    location?: string;
+    salesInCharge?: string;
+    quoteNumber?: string;
+    projectNumber?: string;
+    invoiceNumber?: string;
+    invoiceId?: string;
+    quoteId?: string;
+    quoteStatus?: string;
+    pendingStatus?: string;
+    [key: string]: string | undefined;
+  };
+  // Legacy custom fields - deprecated
   quotation_number?: string; // Custom field for Quotation Number (deprecated - use hash field)
   // Custom field for Quotation Number - this hash is company-specific
   // TODO: Future implementation should map company-specific field IDs
@@ -85,9 +102,24 @@ export interface PipedriveDealForProject {
   person: any;
   id?: number;
   title?: string;
-  department?: string;
+  currency?: string;
+  value?: number;
+  add_time?: string;
+  expected_close_date?: string;
   org_id?: { name?: string };
   person_id?: { name?: string };
+  // Custom fields are now inside customFields object
+  customFields?: {
+    department?: string;
+    vesselName?: string;
+    location?: string;
+    salesInCharge?: string;
+    quoteNumber?: string;
+    projectNumber?: string;
+    [key: string]: string | undefined;
+  };
+  // Legacy fields for backward compatibility
+  department?: string;
   vessel_name?: string;
   location?: string;
   sales_in_charge?: string;

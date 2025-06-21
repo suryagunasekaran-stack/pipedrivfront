@@ -59,14 +59,3 @@ export const ERROR_MESSAGES = {
 
 // Project creation constants
 export const PROJECT_REDIRECT_DELAY = 3000; // 3 seconds
-
-export const PROJECT_CHECK_ITEMS = [
-  { id: 'deal-title', label: 'Pipedrive Deal Title', required: true },
-  { id: 'org-name', label: 'Organization Name', required: true },
-  { id: 'contact-person', label: 'Contact Person', required: true },
-  { id: 'xero-quote', label: 'Xero Quote Number', required: true },
-  { id: 'department', label: 'Department', required: true },
-  { id: 'vessel-name', label: 'Vessel Name', required: true },
-  { id: 'location', label: 'Location', required: true },
-  { id: 'sales-in-charge', label: 'Sales In Charge', required: true },
-] as const;

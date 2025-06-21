@@ -2,7 +2,6 @@
  * Utility functions for project creation and validation
  */
 import { CheckItem, ProjectData, PipedriveDealForProject } from '../types/pipedrive';
-import { PROJECT_CHECK_ITEMS } from '../constants';
 
 /**
  * Validates project data and generates check items
@@ -19,17 +18,37 @@ export function validateProjectData(projectData: ProjectData | null): {
   }
 
   const deal = projectData.deal;
+  const customFields = deal.customFields || {};
+  
+  // Helper function to get custom field value with fallback to legacy fields
+  const getCustomField = (fieldName: string, legacyFieldName?: string): string | null => {
+    // First check customFields object
+    if (customFields[fieldName]) {
+      return customFields[fieldName];
+    }
+    // Then check legacy field names for backward compatibility
+    if (legacyFieldName && (deal as any)[legacyFieldName]) {
+      return (deal as any)[legacyFieldName];
+    }
+    return null;
+  };
   
   const checkItems: CheckItem[] = [
     {
       id: 'deal-title',
-      label: 'Pipedrive Deal Title',
+      label: 'Deal Title',
       value: deal.title,
       isValid: !!deal.title,
     },
     {
+      id: 'currency',
+      label: 'Currency',
+      value: deal.currency,
+      isValid: !!deal.currency,
+    },
+    {
       id: 'org-name',
-      label: 'Organization Name',
+      label: 'Organization',
       value: getOrganizationName(deal),
       isValid: !!getOrganizationName(deal),
     },
@@ -41,33 +60,39 @@ export function validateProjectData(projectData: ProjectData | null): {
     },
     {
       id: 'xero-quote',
-      label: 'Xero Quote Number',
+      label: 'Xero Quote',
       value: projectData.xeroQuoteNumber,
       isValid: !!projectData.xeroQuoteNumber,
     },
     {
       id: 'department',
       label: 'Department',
-      value: deal.department,
-      isValid: !!deal.department,
+      value: getCustomField('department', 'department'),
+      isValid: !!getCustomField('department', 'department'),
     },
     {
       id: 'vessel-name',
       label: 'Vessel Name',
-      value: deal.vessel_name,
-      isValid: !!deal.vessel_name,
+      value: getCustomField('vesselName', 'vessel_name'),
+      isValid: !!getCustomField('vesselName', 'vessel_name'),
     },
     {
       id: 'location',
       label: 'Location',
-      value: deal.location,
-      isValid: !!deal.location,
+      value: getCustomField('location', 'location'),
+      isValid: !!getCustomField('location', 'location'),
     },
     {
       id: 'sales-in-charge',
       label: 'Sales In Charge',
-      value: deal.sales_in_charge,
-      isValid: !!deal.sales_in_charge,
+      value: getCustomField('salesInCharge', 'sales_in_charge'),
+      isValid: !!getCustomField('salesInCharge', 'sales_in_charge'),
+    },
+    {
+      id: 'quote-number',
+      label: 'Quote Number',
+      value: getCustomField('quoteNumber'),
+      isValid: !!getCustomField('quoteNumber'),
     },
   ];
 

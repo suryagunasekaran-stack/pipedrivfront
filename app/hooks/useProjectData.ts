@@ -38,10 +38,8 @@ export function useProjectData({ dealId, companyId }: UseProjectDataProps): UseP
     setError(null);
     
     try {
-      const responseData = await apiCall(API_ENDPOINTS.PIPEDRIVE_CREATE_PROJECT, {
-        method: 'POST',
-        body: JSON.stringify({ dealId, companyId }),
-      });
+      // Use GET request to fetch project data for display
+      const responseData = await apiCall(`${API_ENDPOINTS.PIPEDRIVE_CREATE_PROJECT}?dealId=${dealId}&companyId=${companyId}`);
       
       setProjectData(responseData);
       toast.success('Project data loaded successfully');
