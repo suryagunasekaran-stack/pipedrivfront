@@ -3,7 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { ProjectData, CreationResult } from '../types/pipedrive';
-import { API_ENDPOINTS, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '../constants';
+import { API_ENDPOINTS, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES, BACKEND_API_BASE_URL } from '../constants';
 import { useToast } from './useToastNew';
 import { apiCall } from '../utils/apiClient';
 
@@ -154,4 +154,75 @@ export function useProjectCreation({
     createProject,
     clearResult,
   };
+}
+
+/**
+ * Custom hook for fetching project invoice data
+ */
+export function useProjectInvoiceData(projectNumber: string | null, companyId: string | null) {
+  const [projectData, setProjectData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!projectNumber || !companyId) {
+      setError('Project number and company ID are required');
+      setLoading(false);
+      return;
+    }
+
+    const fetchProjectData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        console.log('Fetching project data for:', { projectNumber, companyId });
+
+        // Fetch real project data from backend
+        const response = await fetch(
+          `${BACKEND_API_BASE_URL}/api/pipedrive/project-invoice-data?projectNumber=${encodeURIComponent(projectNumber)}&companyId=${encodeURIComponent(companyId)}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include', // Include cookies for authentication
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch project data: ${response.status} ${errorText}`);
+        }
+
+        const projectData = await response.json();
+
+        // Log incoming payload from backend
+        console.log('Real Project Data Payload from Backend:', projectData);
+
+        // Validate the data structure
+        if (!projectData.projectNumber || !projectData.deals || !projectData.quotes) {
+          throw new Error('Invalid project data structure received from backend');
+        }
+
+        setProjectData(projectData);
+      } catch (error) {
+        console.error('Failed to fetch project data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load project data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjectData();
+  }, [projectNumber, companyId]);
+
+  const refetch = () => {
+    if (projectNumber && companyId) {
+      setLoading(true);
+      setError(null);
+    }
+  };
+
+  return { projectData, loading, error, refetch };
 }

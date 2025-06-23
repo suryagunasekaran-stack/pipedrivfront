@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import SimpleLoader from '../components/SimpleLoader';
 import { useToast } from '../hooks/useToastNew';
-import { useAuth } from '../hooks/useAuth';
+import { useProjectInvoiceData } from '../hooks/useProjectData';
 import { BACKEND_API_BASE_URL } from '../constants';
 
 // Type definitions
@@ -106,118 +106,24 @@ function CreateInvoiceContent() {
   const projectNumber = searchParams.get('projectNumber');
   const router = useRouter();
   
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [projectData, setProjectData] = useState<ProjectData | null>(null);
+  // Use the custom hook for data fetching
+  const { projectData, loading, error, refetch } = useProjectInvoiceData(projectNumber, companyId);
+  
   const [selectedItems, setSelectedItems] = useState<SelectedLineItem[]>([]);
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
-  const [authAttempted, setAuthAttempted] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [invoiceCreationResult, setInvoiceCreationResult] = useState<InvoiceCreationResponse | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { checkAuth, handleAuthRedirect, isCheckingAuth } = useAuth();
   const toast = useToast();
 
-  // Validate required parameters
+  // Auto-expand all quotes when project data is loaded
   useEffect(() => {
-    const isProjectBased = searchParams.get('isProjectBased');
-    const requiredProjectNumber = searchParams.get('projectNumber');
-    const requiredCompanyId = searchParams.get('companyId');
-    
-    if (isProjectBased !== 'true') {
-      setError('This page is only available for project-based invoice creation');
-      return;
+    if (projectData?.quotes) {
+      setExpandedQuotes(new Set(projectData.quotes.map((q: any) => q.QuoteID)));
     }
-    
-    if (!requiredProjectNumber) {
-      setError('Project number is required for invoice creation');
-      return;
-    }
-    
-    if (!requiredCompanyId) {
-      setError('Company ID is required');
-      return;
-    }
-  }, [searchParams]);
-
-  // Check authentication on mount
-  useEffect(() => {
-    if (authAttempted) return;
-    
-    const verifyAuth = async () => {
-      try {
-        setAuthAttempted(true);
-        
-        const authResponse = await checkAuth(companyId || undefined);
-        if (!authResponse.authenticated) {
-          handleAuthRedirect(authResponse);
-          return;
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        toast.error('Authentication check failed. Please try again.');
-      }
-    };
-
-    verifyAuth();
-  }, [authAttempted, checkAuth, handleAuthRedirect, companyId, toast]);
-
-  // Fetch project data
-  useEffect(() => {
-    if (!authAttempted || isCheckingAuth) return;
-    
-    const fetchProjectData = async () => {
-      try {
-
-        if (!projectNumber || !companyId) {
-          throw new Error('Project number and company ID are required');
-        }
-
-        console.log('Fetching project data for:', { projectNumber, companyId });
-
-        // Fetch real project data from backend
-        const response = await fetch(
-          `${BACKEND_API_BASE_URL}/api/pipedrive/project-invoice-data?projectNumber=${encodeURIComponent(projectNumber)}&companyId=${encodeURIComponent(companyId)}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include', // Include cookies for authentication
-          }
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch project data: ${response.status} ${errorText}`);
-        }
-
-        const projectData: ProjectData = await response.json();
-
-        // Log incoming payload from backend
-        console.log('Real Project Data Payload from Backend:', projectData);
-
-        // Validate the data structure
-        if (!projectData.projectNumber || !projectData.deals || !projectData.quotes) {
-          throw new Error('Invalid project data structure received from backend');
-        }
-
-        setProjectData(projectData);
-        
-        // Auto-expand all quotes for better UX
-        setExpandedQuotes(new Set(projectData.quotes.map(q => q.QuoteID)));
-      } catch (error) {
-        console.error('Failed to fetch project data:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load project data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProjectData();
-  }, [authAttempted, isCheckingAuth, projectNumber, companyId, searchParams]);
+  }, [projectData]);
 
   // Toggle quote expansion
   const toggleQuoteExpansion = (quoteId: string) => {
@@ -356,66 +262,33 @@ function CreateInvoiceContent() {
     }));
 
     try {
-      let response;
-
-      // Debug logging
-      console.log('uploadedFiles state:', uploadedFiles);
-      console.log('uploadedFiles.length:', uploadedFiles.length);
+      // Always use FormData for consistency
+      const formData = new FormData();
+      formData.append('projectNumber', projectData?.projectNumber || '');
+      formData.append('companyId', companyId || '');
+      formData.append('selectedItems', JSON.stringify(selectedItemsData));
       
-      // Filter for successfully uploaded files only
+      // Filter for successfully uploaded files and append them
       const successfullyUploadedFiles = uploadedFiles.filter(uf => uf.uploadStatus === 'success');
-      console.log('Successfully uploaded files:', successfullyUploadedFiles);
-      console.log('Files condition:', successfullyUploadedFiles.length > 0);
-      console.log('About to check condition - will use:', successfullyUploadedFiles.length > 0 ? 'FORMDATA' : 'JSON');
-
-      // Check if there are uploaded files
       if (successfullyUploadedFiles.length > 0) {
-        console.log('✅ USING FORMDATA PATH - Files detected!');
-        // Use multipart/form-data for requests with PDF attachments
-        const formData = new FormData();
-        formData.append('projectNumber', projectData?.projectNumber || '');
-        formData.append('companyId', companyId || '');
-        formData.append('selectedItems', JSON.stringify(selectedItemsData));
-        
-        // Append all successfully uploaded files
         successfullyUploadedFiles.forEach((uploadedFile) => {
           formData.append('files', uploadedFile.file);
         });
-
-        console.log('Sending multipart request with files:', {
-          projectNumber: projectData?.projectNumber,
-          companyId: companyId,
-          selectedItems: selectedItemsData,
-          fileCount: successfullyUploadedFiles.length,
-          fileNames: successfullyUploadedFiles.map(f => f.file.name)
-        });
-
-        response = await fetch('http://localhost:3000/api/xero/create-project-invoice', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include'
-        });
-      } else {
-        console.log('❌ USING JSON PATH - No files detected or files not ready');
-        // Use JSON for requests without files
-        const payload = {
-          projectNumber: projectData?.projectNumber,
-          companyId: companyId,
-          selectedItems: selectedItemsData,
-          uploadedFiles: []
-        };
-
-        console.log('Sending JSON request:', payload);
-
-        response = await fetch('http://localhost:3000/api/xero/create-project-invoice', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-          credentials: 'include'
-        });
       }
+
+      console.log('Sending invoice creation request:', {
+        projectNumber: projectData?.projectNumber,
+        companyId: companyId,
+        selectedItems: selectedItemsData,
+        fileCount: successfullyUploadedFiles.length,
+        fileNames: successfullyUploadedFiles.map(f => f.file.name)
+      });
+
+      const response = await fetch('http://localhost:3000/api/xero/create-project-invoice', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -447,7 +320,7 @@ function CreateInvoiceContent() {
   };
 
   // Loading state
-  if (loading || isCheckingAuth || !authAttempted) {
+  if (loading) {
     return <SimpleLoader />;
   }
 
@@ -456,7 +329,7 @@ function CreateInvoiceContent() {
     return (
       <ErrorDisplay 
         error={error} 
-        onRetry={() => window.location.reload()} 
+        onRetry={() => refetch()} 
       />
     );
   }
@@ -694,7 +567,7 @@ function CreateInvoiceContent() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Deals</h2>
               <div className="space-y-3">
-                {projectData.deals.map((deal) => (
+                {projectData.deals.map((deal: Deal) => (
                   <div key={deal.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-start">
                       <div>
@@ -720,8 +593,8 @@ function CreateInvoiceContent() {
               <h2 className="text-lg font-medium text-gray-900 mb-4">Quotes & Line Items</h2>
               <div className="space-y-4">
                 {projectData.quotes
-                  .filter(quote => quote.Status === 'DRAFT' || quote.Status === 'ACCEPTED')
-                  .map((quote, quoteIndex) => (
+                  .filter((quote: Quote) => quote.Status === 'DRAFT' || quote.Status === 'ACCEPTED')
+                  .map((quote: Quote, quoteIndex: number) => (
                   <div key={quote.QuoteID} className="border border-gray-200 rounded-lg">
                     {/* Quote Header */}
                     <button
@@ -755,7 +628,7 @@ function CreateInvoiceContent() {
                     {/* Line Items */}
                     {expandedQuotes.has(quote.QuoteID) && (
                       <div className="border-t border-gray-200">
-                        {quote.LineItems.map((lineItem, itemIndex) => {
+                        {quote.LineItems.map((lineItem: LineItem, itemIndex: number) => {
                           // For demo purposes, associate with the first deal
                           const associatedDeal = projectData.deals[0];
                           const isSelected = isLineItemSelected(lineItem, quote.QuoteID);
@@ -828,7 +701,7 @@ function CreateInvoiceContent() {
               ) : (
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {uploadedFiles.map((uploadedFile, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-3">
+                    <div key={`${uploadedFile.file.name}-${uploadedFile.file.size}-${uploadedFile.file.lastModified}`} className="border border-gray-200 rounded-lg p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900 break-words">{uploadedFile.file.name}</p>
@@ -891,7 +764,7 @@ function CreateInvoiceContent() {
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {selectedItems.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-3">
+                    <div key={`${item.quoteId}-${item.lineItem.LineItemID}`} className="border border-gray-200 rounded-lg p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">{item.lineItem.Description}</p>
