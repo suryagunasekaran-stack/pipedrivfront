@@ -77,27 +77,28 @@ interface UploadedFile {
 interface InvoiceCreationResponse {
   success: boolean;
   projectNumber: string;
-  invoices: {
-    invoiceId: string;
-    invoiceNumber: string;
-    total: number;
-    fromQuote: string;
-    status: string;
-  }[];
-  quoteUpdates: {
-    quoteId: string;
-    quoteNumber: string;
-    success: boolean;
-    updateType: string;
-    fullyInvoiced: boolean;
-    invoiceNumber: string;
-  }[];
+  companyId: string;
+  invoices: any[];
+  quotes: any[];
+  attachments: any[];
   summary: {
+    totalQuotes: number;
+    totalItems: number;
     invoicesCreated: number;
-    quotesProcessed: number;
-    quotesUpdated: number;
-    quotesFailed: number;
+    quotesUpdatedSuccessfully: number;
+    quotesUpdateFailed: number;
+    filesAttached: number;
+    filesAttachmentFailed: number;
+    isConsolidated: boolean;
+    hasErrors: boolean;
+    hasPartialQuotes: boolean;
   };
+  details: {
+    quotesMetadata: any[];
+    partialQuotesCreated: any[];
+  };
+  warnings: any[];
+  errors: any[];
 }
 
 function CreateInvoiceContent() {
@@ -139,12 +140,12 @@ function CreateInvoiceContent() {
   // Toggle line item selection
   const toggleLineItemSelection = (lineItem: LineItem, quote: Quote, deal: Deal) => {
     const isSelected = selectedItems.some(
-      item => item.lineItem.ItemCode === lineItem.ItemCode && item.quoteId === quote.QuoteID
+      item => item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quote.QuoteID
     );
 
     if (isSelected) {
       setSelectedItems(selectedItems.filter(
-        item => !(item.lineItem.ItemCode === lineItem.ItemCode && item.quoteId === quote.QuoteID)
+        item => !(item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quote.QuoteID)
       ));
     } else {
       setSelectedItems([...selectedItems, {
@@ -161,7 +162,7 @@ function CreateInvoiceContent() {
   // Check if line item is selected
   const isLineItemSelected = (lineItem: LineItem, quoteId: string) => {
     return selectedItems.some(
-      item => item.lineItem.ItemCode === lineItem.ItemCode && item.quoteId === quoteId
+      item => item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quoteId
     );
   };
 
@@ -272,7 +273,7 @@ function CreateInvoiceContent() {
       const successfullyUploadedFiles = uploadedFiles.filter(uf => uf.uploadStatus === 'success');
       if (successfullyUploadedFiles.length > 0) {
         successfullyUploadedFiles.forEach((uploadedFile) => {
-          formData.append('files', uploadedFile.file);
+          formData.append('documents', uploadedFile.file);
         });
       }
 
@@ -380,16 +381,16 @@ function CreateInvoiceContent() {
                   <p className="text-2xl font-semibold text-green-600">{invoiceCreationResult.summary.invoicesCreated}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <p className="text-sm text-gray-500">Quotes Processed</p>
-                  <p className="text-2xl font-semibold text-blue-600">{invoiceCreationResult.summary.quotesProcessed}</p>
+                  <p className="text-sm text-gray-500">Total Quotes</p>
+                  <p className="text-2xl font-semibold text-blue-600">{invoiceCreationResult.summary.totalQuotes}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                   <p className="text-sm text-gray-500">Quotes Updated</p>
-                  <p className="text-2xl font-semibold text-blue-600">{invoiceCreationResult.summary.quotesUpdated}</p>
+                  <p className="text-2xl font-semibold text-blue-600">{invoiceCreationResult.summary.quotesUpdatedSuccessfully}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                   <p className="text-sm text-gray-500">Failed</p>
-                  <p className="text-2xl font-semibold text-red-600">{invoiceCreationResult.summary.quotesFailed}</p>
+                  <p className="text-2xl font-semibold text-red-600">{invoiceCreationResult.summary.quotesUpdateFailed}</p>
                 </div>
               </div>
 
@@ -398,7 +399,7 @@ function CreateInvoiceContent() {
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice Details</h2>
                 <div className="space-y-4">
                   {invoiceCreationResult.invoices.map((invoice, index) => (
-                    <div key={invoice.invoiceId} className="border border-gray-200 rounded-lg p-4">
+                    <div key={`invoice-${invoice.invoiceId}-${index}`} className="border border-gray-200 rounded-lg p-4">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <p className="text-sm text-gray-500">Invoice Number</p>
@@ -436,8 +437,8 @@ function CreateInvoiceContent() {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Quote Updates</h2>
                 <div className="space-y-4">
-                  {invoiceCreationResult.quoteUpdates.map((update, index) => (
-                    <div key={update.quoteId} className="border border-gray-200 rounded-lg p-4">
+                  {invoiceCreationResult.quotes.map((update: any, index: number) => (
+                    <div key={`quote-update-${update.quoteId}-${index}`} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-medium text-gray-900">{update.quoteNumber}</p>
