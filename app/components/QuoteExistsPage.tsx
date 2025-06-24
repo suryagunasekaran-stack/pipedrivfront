@@ -1,5 +1,4 @@
 import { useRouter } from 'next/navigation';
-import { DEFAULT_PIPEDRIVE_DOMAIN } from '../constants';
 
 interface QuoteExistsPageProps {
   type: 'quote' | 'project';
@@ -31,8 +30,9 @@ export default function QuoteExistsPage({
   const router = useRouter();
 
   const handleGoHome = () => {
-    const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || DEFAULT_PIPEDRIVE_DOMAIN;
-    router.push(`https://${pipedriveDomain}`);
+    // Since Pipedrive domains are custom with no naming convention,
+    // we'll just show a message instead of redirecting
+    alert('Task completed! Please return to your Pipedrive account.');
   };
 
   const handleUpdateDeal = () => {
@@ -52,8 +52,7 @@ export default function QuoteExistsPage({
       return;
     }
 
-    // Construct the external workflow URL using environment variable
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // Navigate to update page in same tab instead of new window
     const params = new URLSearchParams({
       uiAction: 'updateQuotation',
       dealId: dealId,
@@ -63,9 +62,9 @@ export default function QuoteExistsPage({
       ...(userName && { userName }),
     });
     
-    const updateUrl = `${baseUrl}/pipedrive-action?${params.toString()}`;
-    console.log('Redirecting to:', updateUrl);
-    window.open(updateUrl, '_blank');
+    const updateUrl = `/pipedrive-action?${params.toString()}`;
+    console.log('Navigating to:', updateUrl);
+    router.push(updateUrl);
   };
 
   // Dynamic content based on type
@@ -172,7 +171,7 @@ export default function QuoteExistsPage({
               onClick={handleGoHome}
               className="flex-none rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 border border-gray-300 shadow-xs hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600 transition-colors"
             >
-              Go Home
+              Task Complete
             </button>
           </div>
           

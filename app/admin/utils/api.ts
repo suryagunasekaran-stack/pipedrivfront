@@ -15,8 +15,9 @@ class AdminAPIError extends Error {
  * Base function for making authenticated admin requests
  * Automatically includes credentials and handles 401 redirects
  */
-// Get backend URL from environment or default to localhost:3000
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+// Import backend URL from constants for consistency
+import { BACKEND_API_BASE_URL } from '../../constants';
+const BACKEND_URL = BACKEND_API_BASE_URL;
 
 export async function adminRequest<T = any>(
   endpoint: string,

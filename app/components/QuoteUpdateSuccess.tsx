@@ -46,8 +46,8 @@ export default function QuoteUpdateSuccess({
   };
 
   const handleGoToPipedrive = () => {
-    const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || 'app.pipedrive.com';
-    window.open(`https://${pipedriveDomain}/deal/${updateData.dealId}`, '_blank');
+    // Since Pipedrive domains are custom, show a message instead of redirecting
+    alert('Quote updated successfully! Please return to your Pipedrive account to view the updated deal.');
   };
 
   // Extract values from the API response structure
@@ -161,7 +161,7 @@ export default function QuoteUpdateSuccess({
               onClick={handleGoToPipedrive}
               className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              View Deal in Pipedrive
+              Task Complete
             </button>
             
             <button

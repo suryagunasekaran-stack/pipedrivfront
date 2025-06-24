@@ -285,7 +285,7 @@ function CreateInvoiceContent() {
         fileNames: successfullyUploadedFiles.map(f => f.file.name)
       });
 
-      const response = await fetch('http://localhost:3000/api/xero/create-project-invoice', {
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/xero/create-project-invoice`, {
         method: 'POST',
         body: formData,
         credentials: 'include'

@@ -90,29 +90,21 @@ export default function ProjectCreationMode({
     );
   }, [searchTerm, xeroProjects]);
 
-  // Handle redirect after successful link
+  // Handle success message after successful link
   useEffect(() => {
     if (!linkResult?.success) return;
 
     const timer = setTimeout(() => {
-      const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN;
-      const redirectUrl = pipedriveDomain && dealId
-        ? `https://${pipedriveDomain}/deal/${dealId}`
-        : null;
-
-      if (redirectUrl) {
-        router.push(redirectUrl);
-      } else {
-        const updatedResult: CreationResult = {
-          ...linkResult,
-          message: `${linkResult.message} Please return to Pipedrive.`
-        };
-        setLinkResult(updatedResult);
-      }
+      // Since Pipedrive domains are custom, just show a success message
+      const updatedResult: CreationResult = {
+        ...linkResult,
+        message: `${linkResult.message} Please return to your Pipedrive account to view the updated deal.`
+      };
+      setLinkResult(updatedResult);
     }, PROJECT_REDIRECT_DELAY);
 
     return () => clearTimeout(timer);
-  }, [linkResult, router, dealId]);
+  }, [linkResult, dealId]);
 
   // Handle linking existing project
   const handleLinkProject = async () => {

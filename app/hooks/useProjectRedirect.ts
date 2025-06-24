@@ -25,25 +25,18 @@ export function useProjectRedirect({
     if (!creationResult?.success) return;
 
     const timer = setTimeout(() => {
-      const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN;
       const dealId = creationResult.pipedriveDealId;
-
-      const redirectUrl = generatePipedriveRedirectUrl(pipedriveDomain, dealId);
-
-      if (redirectUrl) {
-        router.push(redirectUrl);
-      } else {
-        console.log(`Project created successfully. Pipedrive domain or deal ID missing for redirect. Please return to Pipedrive to view deal ID: ${dealId}`);
-        
-        // Update the result message to indicate manual return needed
-        const updatedResult: CreationResult = {
-          ...creationResult,
-          message: formatSuccessMessage(creationResult.projectNumber, false)
-        };
-        onUpdateResult(updatedResult);
-      }
+      
+      console.log(`Project created successfully. Please return to Pipedrive to view deal ID: ${dealId}`);
+      
+      // Update the result message to indicate manual return needed
+      const updatedResult: CreationResult = {
+        ...creationResult,
+        message: formatSuccessMessage(creationResult.projectNumber, false)
+      };
+      onUpdateResult(updatedResult);
     }, PROJECT_REDIRECT_DELAY);
 
     return () => clearTimeout(timer);
-  }, [creationResult, router, onUpdateResult]);
+  }, [creationResult, onUpdateResult]);
 }

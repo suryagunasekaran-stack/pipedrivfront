@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { XeroQuoteResponse } from '../types/pipedrive';
-import { API_ENDPOINTS, DEFAULT_PIPEDRIVE_DOMAIN, REDIRECT_DELAY } from '../constants';
+import { API_ENDPOINTS, REDIRECT_DELAY } from '../constants';
 import { apiCall } from '../utils/apiClient';
 
 interface XeroQuoteCreatorProps {
@@ -50,10 +50,9 @@ export default function XeroQuoteCreator({
       
       toast.success(successMsg);
 
-      // Redirect after a short delay to allow toast to be seen
+      // Show success message instead of redirecting
       setTimeout(() => {
-        const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || DEFAULT_PIPEDRIVE_DOMAIN;
-        router.push(`https://${pipedriveDomain}/deal/${dealId}`);
+        alert('Quote created successfully! Please return to your Pipedrive account to view the updated deal.');
       }, REDIRECT_DELAY);
 
     } catch (error) {

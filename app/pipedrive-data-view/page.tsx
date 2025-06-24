@@ -8,7 +8,7 @@ import XeroConnectionStatus from '../components/XeroConnectionStatus';
 import { usePipedriveData } from '../hooks/usePipedriveData';
 import { useXeroStatus } from '../hooks/useXeroStatus';
 import { useToast } from '../hooks/useToastNew';
-import { ERROR_MESSAGES, API_ENDPOINTS, DEFAULT_PIPEDRIVE_DOMAIN, REDIRECT_DELAY } from '../constants';
+import { ERROR_MESSAGES, API_ENDPOINTS, REDIRECT_DELAY } from '../constants';
 import { XeroQuoteResponse } from '../types/pipedrive';
 import { apiCall } from '../utils/apiClient';
 import SimpleLoader from '../components/SimpleLoader';
@@ -67,10 +67,9 @@ function PipedriveDataViewContent() {
       
       toast.success(successMsg);
 
-      // Redirect after a short delay to allow toast to be seen
+      // Show success message instead of redirecting
       setTimeout(() => {
-        const pipedriveDomain = process.env.NEXT_PUBLIC_PIPEDRIVE_DOMAIN || DEFAULT_PIPEDRIVE_DOMAIN;
-        router.push(`https://${pipedriveDomain}/deal/${dealId}`);
+        alert('Quote created successfully! Please return to your Pipedrive account to view the updated deal.');
       }, REDIRECT_DELAY);
 
     } catch (error) {

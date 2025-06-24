@@ -31,10 +31,9 @@ export default function InvoiceCreationSuccess({
       setRedirectCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Redirect to Pipedrive deal
-          if (dealId) {
-            window.location.href = `https://app.pipedrive.com/deal/${dealId}`;
-          } else if (onClose) {
+          // Show success message instead of redirecting
+          alert('Invoice created successfully! Please return to your Pipedrive account to view the updated deal.');
+          if (onClose) {
             onClose();
           }
           return 0;
@@ -110,7 +109,7 @@ export default function InvoiceCreationSuccess({
           {/* Redirect Countdown */}
           <div className="bg-blue-50 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-800">
-              Redirecting to Pipedrive in <span className="font-bold">{redirectCountdown}</span> seconds...
+              Completing task in <span className="font-bold">{redirectCountdown}</span> seconds...
             </p>
           </div>
 
@@ -118,13 +117,14 @@ export default function InvoiceCreationSuccess({
           <div className="flex justify-center space-x-4">
             <button
               onClick={() => {
-                if (dealId) {
-                  window.location.href = `https://app.pipedrive.com/deal/${dealId}`;
+                alert('Invoice created successfully! Please return to your Pipedrive account to view the updated deal.');
+                if (onClose) {
+                  onClose();
                 }
               }}
               className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              Go to Pipedrive Now
+              Task Complete
             </button>
             
             {onClose && (
