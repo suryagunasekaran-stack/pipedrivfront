@@ -29,10 +29,8 @@ export default function QuoteExistsPage({
 }: QuoteExistsPageProps) {
   const router = useRouter();
 
-  const handleGoHome = () => {
-    // Since Pipedrive domains are custom with no naming convention,
-    // we'll just show a message instead of redirecting
-    alert('Task completed! Please return to your Pipedrive account.');
+  const handleCloseWindow = () => {
+    window.close();
   };
 
   const handleUpdateDeal = () => {
@@ -52,9 +50,8 @@ export default function QuoteExistsPage({
       return;
     }
 
-    // Navigate to update page in same tab instead of new window
+    // Navigate to update quotation page directly
     const params = new URLSearchParams({
-      uiAction: 'updateQuotation',
       dealId: dealId,
       companyId: companyId,
       ...(userId && { userId }),
@@ -62,7 +59,7 @@ export default function QuoteExistsPage({
       ...(userName && { userName }),
     });
     
-    const updateUrl = `/pipedrive-action?${params.toString()}`;
+    const updateUrl = `/update-quotation-page?${params.toString()}`;
     console.log('Navigating to:', updateUrl);
     router.push(updateUrl);
   };
@@ -168,10 +165,10 @@ export default function QuoteExistsPage({
               </button>
             )}
             <button
-              onClick={handleGoHome}
+              onClick={handleCloseWindow}
               className="flex-none rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 border border-gray-300 shadow-xs hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600 transition-colors"
             >
-              Task Complete
+              Close Window
             </button>
           </div>
           

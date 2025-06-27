@@ -12,6 +12,7 @@ import { ERROR_MESSAGES, API_ENDPOINTS, REDIRECT_DELAY } from '../constants';
 import { XeroQuoteResponse } from '../types/pipedrive';
 import { apiCall } from '../utils/apiClient';
 import SimpleLoader from '../components/SimpleLoader';
+import QuoteExistsPage from '../components/QuoteExistsPage';
 import { calculateProductSummary, calculateProductFinancials } from '../utils/calculations';
 
 /**
@@ -42,6 +43,14 @@ function PipedriveDataViewContent() {
   const { data, loading, error, refetch } = usePipedriveData(dealId, companyId);
   const toast = useToast();
 
+  // Add state for quote creation process
+  const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+  const [quoteCreated, setQuoteCreated] = useState(false);
+
+  // Handle close window functionality
+  const handleCloseWindow = () => {
+    window.close();
+  };
 
   // Handle create quote functionality
   const handleCreateQuote = async () => {
@@ -49,6 +58,9 @@ function PipedriveDataViewContent() {
       toast.error('Missing Pipedrive Deal ID or Company ID');
       return;
     }
+    
+    // Set loading state
+    setIsCreatingQuote(true);
     
     try {
       // Include user info and additional parameters from query params
@@ -66,16 +78,17 @@ function PipedriveDataViewContent() {
         `Xero Quote ${responseData.quoteNumber || ''} created successfully!`;
       
       toast.success(successMsg);
-
-      // Show success message instead of redirecting
-      setTimeout(() => {
-        alert('Quote created successfully! Please return to your Pipedrive account to view the updated deal.');
-      }, REDIRECT_DELAY);
+      
+      // Set success state
+      setQuoteCreated(true);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create quote';
       toast.error(errorMessage);
       
+    } finally {
+      // Reset loading state
+      setIsCreatingQuote(false);
     }
   };
 
@@ -111,7 +124,6 @@ function PipedriveDataViewContent() {
 
   // If quote exists, redirect to quote exists page
   if (existingQuoteNumber) {
-    const QuoteExistsPage = require('../components/QuoteExistsPage').default;
     return (
       <QuoteExistsPage
         type="quote"
@@ -271,10 +283,32 @@ function PipedriveDataViewContent() {
         {/* Create Quote Button */}
         <div className="mt-10 flex justify-center">
           <button
-            onClick={handleCreateQuote}
-            className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            onClick={quoteCreated ? handleCloseWindow : handleCreateQuote}
+            disabled={isCreatingQuote}
+            className={`rounded-md px-3.5 py-2.5 text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition-all duration-200 ${
+              isCreatingQuote
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : quoteCreated
+                ? 'bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600'
+                : 'bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600'
+            }`}
           >
-            Create Quote
+            <div className="flex items-center justify-center gap-2">
+              {isCreatingQuote && (
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
+              {quoteCreated && (
+                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <span>
+                {isCreatingQuote ? 'Creating Quote...' : quoteCreated ? 'Close Window' : 'Create Quote'}
+              </span>
+            </div>
           </button>
         </div>
       </div>

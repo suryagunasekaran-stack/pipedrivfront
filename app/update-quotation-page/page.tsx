@@ -479,9 +479,23 @@ function UpdateQuotationContent() {
           <div className="flex justify-center">
             <button
               onClick={handleUpdateQuote}
-              disabled={updatingQuote || !comparisonAnalysis?.canUpdate}
+              disabled={updatingQuote || !comparisonAnalysis?.canUpdate || (() => {
+                // Check if there are no changes (same logic as in the comparison summary)
+                const discountIssues = comparisonAnalysis?.productComparison?.discountAnalysis?.filter(
+                  item => !item.discountMatch || (item.discrepancy && item.discrepancy > 0.01)
+                ) || [];
+                const hasChanges = comparisonAnalysis?.hasChanges || discountIssues.length > 0;
+                return !hasChanges;
+              })()}
               className={`inline-flex items-center justify-center px-6 py-3 text-sm font-medium rounded-md shadow-sm transition-colors ${
-                comparisonAnalysis?.canUpdate
+                comparisonAnalysis?.canUpdate && (() => {
+                  // Check if there are changes to enable the button
+                  const discountIssues = comparisonAnalysis?.productComparison?.discountAnalysis?.filter(
+                    item => !item.discountMatch || (item.discrepancy && item.discrepancy > 0.01)
+                  ) || [];
+                  const hasChanges = comparisonAnalysis?.hasChanges || discountIssues.length > 0;
+                  return hasChanges;
+                })()
                   ? 'bg-blue-600 hover:bg-blue-700 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
@@ -497,11 +511,21 @@ function UpdateQuotationContent() {
               ) : 'Update on Xero'}
             </button>
           </div>
-          {!comparisonAnalysis?.canUpdate && comparisonAnalysis?.message && (
-            <p className="mt-2 text-center text-sm text-red-600">
-              {comparisonAnalysis.message}
+          {(!comparisonAnalysis?.canUpdate && comparisonAnalysis?.message) || (() => {
+            // Check if button is disabled due to no changes
+            const discountIssues = comparisonAnalysis?.productComparison?.discountAnalysis?.filter(
+              item => !item.discountMatch || (item.discrepancy && item.discrepancy > 0.01)
+            ) || [];
+            const hasChanges = comparisonAnalysis?.hasChanges || discountIssues.length > 0;
+            return comparisonAnalysis?.canUpdate && !hasChanges;
+          })() ? (
+            <p className="mt-2 text-center text-sm text-gray-600">
+              {!comparisonAnalysis?.canUpdate 
+                ? comparisonAnalysis?.message 
+                : 'No changes detected - Update not needed'
+              }
             </p>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

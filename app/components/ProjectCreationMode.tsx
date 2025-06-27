@@ -61,10 +61,16 @@ export default function ProjectCreationMode({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [linkResult, setLinkResult] = useState<CreationResult | null>(null);
+  const [projectCreated, setProjectCreated] = useState(false);
   
   const toast = useToast();
   const router = useRouter();
   const { checkItems, allChecksPassed } = validateProjectData(projectData);
+
+  // Handle close window functionality
+  const handleCloseWindow = () => {
+    window.close();
+  };
   const hasValidProjectData = !!projectData?.deal?.id;
 
   // Get xeroProjects from projectData
@@ -167,6 +173,13 @@ export default function ProjectCreationMode({
   // Combined result for display
   const displayResult = mode === 'create' ? creationResult : linkResult;
   const isProcessing = mode === 'create' ? isCreating : isLinking;
+
+  // Track when project creation is successful
+  useEffect(() => {
+    if (creationResult?.success) {
+      setProjectCreated(true);
+    }
+  }, [creationResult]);
 
   // Handle project selection
   const handleSelectProject = (project: XeroProject) => {
@@ -422,11 +435,32 @@ export default function ProjectCreationMode({
               <>
                 {hasAllRequiredFields ? (
                   <button 
-                    onClick={onCreateProject}
+                    onClick={projectCreated ? handleCloseWindow : onCreateProject}
                     disabled={isLoading || !!error || isCreating || !hasValidProjectData}
-                    className="w-full rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`w-full rounded-md px-3.5 py-2.5 text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition-all duration-200 ${
+                      isCreating
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        : projectCreated
+                        ? 'bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {isCreating ? 'Creating Project...' : 'Create Project'}
+                    <div className="flex items-center justify-center gap-2">
+                      {isCreating && (
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      {projectCreated && (
+                        <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      <span>
+                        {isCreating ? 'Creating Project...' : projectCreated ? 'Close Window' : 'Create Project'}
+                      </span>
+                    </div>
                   </button>
                 ) : (
                   <div className="rounded-md bg-yellow-50 p-4">
