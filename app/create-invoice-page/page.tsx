@@ -143,6 +143,7 @@ function CreateInvoiceContent() {
       item => item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quote.QuoteID
     );
 
+    //fake
     if (isSelected) {
       setSelectedItems(selectedItems.filter(
         item => !(item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quote.QuoteID)
