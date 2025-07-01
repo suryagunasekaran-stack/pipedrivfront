@@ -1,8 +1,48 @@
 'use client';
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter } from 'next/navigation';
+import { captureUserAuthFromURL } from '../../../utils/userAuth';
+import { executePendingAction, getPendingAction } from '../../../utils/authRetry';
 
 function PipedriveSuccessContent() {
+  const router = useRouter();
+  const [isExecutingAction, setIsExecutingAction] = useState(false);
+
+  useEffect(() => {
+    const handlePostAuth = async () => {
+      // Capture user authentication data from URL on page load
+      const authData = captureUserAuthFromURL();
+      if (authData) {
+        console.log('User authentication data captured:', authData);
+        
+        // Check if there's a pending action to execute
+        const pendingAction = getPendingAction();
+        if (pendingAction) {
+          setIsExecutingAction(true);
+          console.log('Executing pending action:', pendingAction);
+          
+          // Give a moment for the auth data to be properly stored
+          setTimeout(async () => {
+            const success = await executePendingAction();
+            if (success) {
+              // If it was a quote creation, redirect to the appropriate page
+              if (pendingAction.url.includes('/api/xero/quote')) {
+                router.push('/pipedrive-data-view');
+              } else {
+                // For other actions, just show success
+                setIsExecutingAction(false);
+              }
+            } else {
+              setIsExecutingAction(false);
+            }
+          }, 1000);
+        }
+      }
+    };
+    
+    handlePostAuth();
+  }, [router]);
 
   const handleGoToPipedrive = () => {
     window.open('https://app.pipedrive.com/', '_blank');
@@ -30,11 +70,13 @@ function PipedriveSuccessContent() {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Success!
+            {isExecutingAction ? 'Processing...' : 'Success!'}
           </h1>
           
           <p className="text-gray-600 mb-6">
-            Operation completed successfully.
+            {isExecutingAction 
+              ? 'Completing your request...' 
+              : 'Operation completed successfully.'}
           </p>
         </div>
 

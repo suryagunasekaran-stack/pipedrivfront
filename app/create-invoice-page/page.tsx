@@ -8,6 +8,7 @@ import SimpleLoader from '../components/SimpleLoader';
 import { useToast } from '../hooks/useToastNew';
 import { useProjectInvoiceData } from '../hooks/useProjectData';
 import { BACKEND_API_BASE_URL } from '../constants';
+import { getUserAuthData, appendUserAuthToUrl, addUserAuthHeaders } from '../utils/userAuth';
 
 // Type definitions
 interface Deal {
@@ -264,11 +265,27 @@ function CreateInvoiceContent() {
     }));
 
     try {
+      // Get user auth data
+      const userAuth = getUserAuthData();
+      
       // Always use FormData for consistency
       const formData = new FormData();
       formData.append('projectNumber', projectData?.projectNumber || '');
       formData.append('companyId', companyId || '');
       formData.append('selectedItems', JSON.stringify(selectedItemsData));
+      
+      // Add user auth data to FormData
+      if (userAuth) {
+        if (userAuth.userId) {
+          formData.append('userId', userAuth.userId);
+        }
+        if (userAuth.userEmail) {
+          formData.append('userEmail', userAuth.userEmail);
+        }
+        if (userAuth.userName) {
+          formData.append('userName', userAuth.userName);
+        }
+      }
       
       // Filter for successfully uploaded files and append them
       const successfullyUploadedFiles = uploadedFiles.filter(uf => uf.uploadStatus === 'success');
@@ -283,13 +300,19 @@ function CreateInvoiceContent() {
         companyId: companyId,
         selectedItems: selectedItemsData,
         fileCount: successfullyUploadedFiles.length,
-        fileNames: successfullyUploadedFiles.map(f => f.file.name)
+        fileNames: successfullyUploadedFiles.map(f => f.file.name),
+        userId: userAuth?.userId
       });
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/xero/create-project-invoice`, {
+      // Add user auth to URL and headers
+      const urlWithAuth = appendUserAuthToUrl(`${BACKEND_API_BASE_URL}/api/xero/create-project-invoice`);
+      const headersWithAuth = addUserAuthHeaders({});
+
+      const response = await fetch(urlWithAuth, {
         method: 'POST',
         body: formData,
-        credentials: 'include'
+        credentials: 'include',
+        headers: headersWithAuth
       });
 
       if (!response.ok) {

@@ -6,6 +6,7 @@ import { ProjectData, CreationResult } from '../types/pipedrive';
 import { API_ENDPOINTS, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES, BACKEND_API_BASE_URL } from '../constants';
 import { useToast } from './useToastNew';
 import { apiCall } from '../utils/apiClient';
+import { appendUserAuthToUrl, addUserAuthHeaders } from '../utils/userAuth';
 
 interface UseProjectDataProps {
   dealId: string | null;
@@ -178,17 +179,19 @@ export function useProjectInvoiceData(projectNumber: string | null, companyId: s
       try {
         console.log('Fetching project data for:', { projectNumber, companyId });
 
-        // Fetch real project data from backend
-        const response = await fetch(
-          `${BACKEND_API_BASE_URL}/api/pipedrive/project-invoice-data?projectNumber=${encodeURIComponent(projectNumber)}&companyId=${encodeURIComponent(companyId)}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include', // Include cookies for authentication
-          }
+        // Fetch real project data from backend with userId
+        const urlWithAuth = appendUserAuthToUrl(
+          `${BACKEND_API_BASE_URL}/api/pipedrive/project-invoice-data?projectNumber=${encodeURIComponent(projectNumber)}&companyId=${encodeURIComponent(companyId)}`
         );
+        const headersWithAuth = addUserAuthHeaders({
+          'Content-Type': 'application/json',
+        });
+
+        const response = await fetch(urlWithAuth, {
+          method: 'GET',
+          headers: headersWithAuth,
+          credentials: 'include', // Include cookies for authentication
+        });
 
         if (!response.ok) {
           const errorText = await response.text();

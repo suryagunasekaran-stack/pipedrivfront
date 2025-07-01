@@ -14,6 +14,7 @@ import QuoteExistsPage from '../components/QuoteExistsPage';
 import SimpleLoader from '../components/SimpleLoader';
 import ErrorDisplay from '../components/ErrorDisplay';
 import { CreationResult } from '../types/pipedrive';
+import { getUserAuthData } from '../utils/userAuth';
 
 /**
  * Main page component for project creation workflow
@@ -42,6 +43,14 @@ function CreateProjectContent() {
 
   // Result state for redirect handling
   const [currentResult, setCurrentResult] = useState<CreationResult | null>(null);
+
+  // Capture user auth data on page load
+  useEffect(() => {
+    const authData = getUserAuthData();
+    if (authData) {
+      console.log('User auth data available:', authData);
+    }
+  }, []);
 
   // Update current result when creation result changes
   useEffect(() => {

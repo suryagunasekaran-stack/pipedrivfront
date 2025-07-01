@@ -14,6 +14,7 @@ import { apiCall } from '../utils/apiClient';
 import SimpleLoader from '../components/SimpleLoader';
 import QuoteExistsPage from '../components/QuoteExistsPage';
 import { calculateProductSummary, calculateProductFinancials } from '../utils/calculations';
+import { getUserAuthData } from '../utils/userAuth';
 
 /**
  * Main page component for displaying Pipedrive data
@@ -42,6 +43,14 @@ function PipedriveDataViewContent() {
   // Custom hooks for data fetching and state management
   const { data, loading, error, refetch } = usePipedriveData(dealId, companyId);
   const toast = useToast();
+  
+  // Capture user auth data on page load
+  useEffect(() => {
+    const authData = getUserAuthData();
+    if (authData) {
+      console.log('User auth data available:', authData);
+    }
+  }, []);
 
   // Add state for quote creation process
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
@@ -63,10 +72,17 @@ function PipedriveDataViewContent() {
     setIsCreatingQuote(true);
     
     try {
-      // Include user info and additional parameters from query params
+      // Get user auth data
+      const userAuth = getUserAuthData();
+      
+      // Include user info and additional parameters
       const requestBody = {
         pipedriveCompanyId: companyId,
         pipedriveDealId: dealId,
+        // Always include userId from stored auth data
+        userId: userAuth?.userId || userId,
+        userEmail: userAuth?.userEmail || userEmail,
+        userName: userAuth?.userName || userName,
       };
 
       const responseData: XeroQuoteResponse = await apiCall(API_ENDPOINTS.XERO_QUOTE, {

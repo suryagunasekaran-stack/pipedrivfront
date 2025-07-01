@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const dealId = searchParams.get('dealId');
     const companyId = searchParams.get('companyId');
+    const userId = searchParams.get('userId');
 
     if (!dealId || !companyId) {
       return NextResponse.json(
@@ -19,13 +20,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Build URL with all parameters including userId
+    const backendUrl = new URL(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PIPEDRIVE_DATA}`);
+    backendUrl.searchParams.set('dealId', dealId);
+    backendUrl.searchParams.set('companyId', companyId);
+    if (userId) {
+      backendUrl.searchParams.set('userId', userId);
+    }
+
     // Call external API for Pipedrive data
-    const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PIPEDRIVE_DATA}?dealId=${dealId}&companyId=${companyId}`, {
+    const response = await fetch(backendUrl.toString(), {
       headers: {
         'Content-Type': 'application/json',
         // Forward any cookies or authorization headers
         'Cookie': request.headers.get('cookie') || '',
         'Authorization': request.headers.get('authorization') || '',
+        // Forward user ID header if present
+        'X-User-ID': request.headers.get('x-user-id') || userId || '',
+        'X-Company-ID': request.headers.get('x-company-id') || companyId || '',
+        'X-User-Email': request.headers.get('x-user-email') || '',
       },
     });
     

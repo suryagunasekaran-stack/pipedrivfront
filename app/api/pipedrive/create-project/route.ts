@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const dealId = searchParams.get('dealId');
     const companyId = searchParams.get('companyId');
+    const userId = searchParams.get('userId');
 
     if (!dealId || !companyId) {
       return NextResponse.json(
@@ -46,13 +47,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Build URL with all parameters including userId
+    const backendUrl = new URL(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PROJECT_CREATE}`);
+    backendUrl.searchParams.set('dealId', dealId);
+    backendUrl.searchParams.set('companyId', companyId);
+    if (userId) {
+      backendUrl.searchParams.set('userId', userId);
+    }
+
     // Forward GET request to the external API
-    const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PROJECT_CREATE}?dealId=${dealId}&companyId=${companyId}`, {
+    const response = await fetch(backendUrl.toString(), {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Cookie': request.headers.get('cookie') || '',
         'Authorization': request.headers.get('authorization') || '',
+        // Forward user ID header if present
+        'X-User-ID': request.headers.get('x-user-id') || userId || '',
+        'X-Company-ID': request.headers.get('x-company-id') || companyId || '',
+        'X-User-Email': request.headers.get('x-user-email') || '',
       },
     });
 
@@ -96,7 +109,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { dealId, companyId } = body;
+    const { dealId, companyId, userId, userEmail, userName } = body;
 
     if (!dealId || !companyId) {
       return NextResponse.json(
@@ -105,13 +118,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Forward request to the external API
+    // Forward request to the external API with all auth data
     const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.PROJECT_CREATE}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Forward user ID header if present
+        'X-User-ID': request.headers.get('x-user-id') || userId || '',
+        'X-Company-ID': request.headers.get('x-company-id') || companyId || '',
+        'X-User-Email': request.headers.get('x-user-email') || userEmail || '',
       },
-      body: JSON.stringify({ dealId, companyId }),
+      body: JSON.stringify({ dealId, companyId, userId, userEmail, userName }),
     });
 
     if (!response.ok) {

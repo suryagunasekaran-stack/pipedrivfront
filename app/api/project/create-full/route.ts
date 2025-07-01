@@ -9,7 +9,7 @@ import { EXTERNAL_API_BASE_URL, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES } from '@
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pipedriveDealId, xeroQuoteNumber, pipedriveCompanyId } = body;
+    const { pipedriveDealId, xeroQuoteNumber, pipedriveCompanyId, userId, userEmail, userName } = body;
 
     if (!pipedriveDealId || !pipedriveCompanyId) {
       return NextResponse.json(
@@ -26,8 +26,12 @@ export async function POST(request: NextRequest) {
         // Forward any cookies or authorization headers
         'Cookie': request.headers.get('cookie') || '',
         'Authorization': request.headers.get('authorization') || '',
+        // Forward user ID header if present
+        'X-User-ID': request.headers.get('x-user-id') || userId || '',
+        'X-Company-ID': request.headers.get('x-company-id') || pipedriveCompanyId || '',
+        'X-User-Email': request.headers.get('x-user-email') || userEmail || '',
       },
-      body: JSON.stringify({ pipedriveDealId, xeroQuoteNumber, pipedriveCompanyId }),
+      body: JSON.stringify({ pipedriveDealId, xeroQuoteNumber, pipedriveCompanyId, userId, userEmail, userName }),
     });
 
     // Handle authentication errors

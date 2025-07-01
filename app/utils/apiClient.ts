@@ -3,6 +3,8 @@
  */
 
 import { BACKEND_API_BASE_URL } from '../constants';
+import { appendUserAuthToUrl, addUserAuthHeaders, getUserAuth, addUserAuthToBody } from './userAuth';
+import { storePendingAction } from './authRetry';
 
 interface ApiResponse<T = any> {
   data?: T;
@@ -26,12 +28,18 @@ export async function apiCall<T = any>(
 ): Promise<T> {
   const { skipAuthRedirect = false, ...fetchOptions } = options;
   
+  // Add userId to URL for GET requests or as query parameter
+  const urlWithAuth = appendUserAuthToUrl(url);
+  
+  // Add user auth headers
+  const headersWithAuth = addUserAuthHeaders({
+    'Content-Type': 'application/json',
+    ...fetchOptions.headers,
+  });
+  
   try {
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...fetchOptions.headers,
-      },
+    const response = await fetch(urlWithAuth, {
+      headers: headersWithAuth,
       ...fetchOptions,
     });
 
@@ -45,7 +53,22 @@ export async function apiCall<T = any>(
     // Handle authentication errors
     if (response.status === 401 && !skipAuthRedirect) {
       if (data.authUrl) {
-        window.location.href = data.authUrl;
+        // Store the pending action before redirecting
+        storePendingAction({
+          action: 'api_call',
+          url: urlWithAuth,
+          method: fetchOptions.method || 'GET',
+          body: fetchOptions.body ? JSON.parse(fetchOptions.body as string) : undefined,
+          headers: headersWithAuth,
+          timestamp: Date.now()
+        });
+        
+        // For frontend pages, redirect to our success page, not directly to API endpoints
+        const authUrl = new URL(data.authUrl);
+        const returnUrl = '/auth/pipedrive/success';
+        authUrl.searchParams.set('returnUrl', returnUrl);
+        
+        window.location.href = authUrl.toString();
         return Promise.reject(new Error('Authentication required - redirecting...'));
       } else {
         // Fallback to default auth page
@@ -103,7 +126,7 @@ export const api = {
   createProject: (data: { dealId: string; companyId: string }) =>
     apiCall('/api/pipedrive/create-project', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(addUserAuthToBody(data)),
     }),
 
   // Create full project
@@ -114,7 +137,7 @@ export const api = {
   }) => 
     apiCall('/api/project/create-full', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(addUserAuthToBody(data)),
     }),
 
   // Get Xero status
@@ -134,15 +157,19 @@ export const api = {
   }) =>
     apiCall('/api/xero/quote', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(addUserAuthToBody(data)),
     }),
 
   // Get quotation data for updating
   getQuotationData: async (dealId: string, companyId: string) => {
-    const response = await fetch(`${BACKEND_API_BASE_URL}/api/pipedrive/get-quotation-data`, {
+    const urlWithAuth = appendUserAuthToUrl(`${BACKEND_API_BASE_URL}/api/pipedrive/get-quotation-data`);
+    const headersWithAuth = addUserAuthHeaders({ 'Content-Type': 'application/json' });
+    const bodyWithAuth = addUserAuthToBody({ dealId, companyId });
+    
+    const response = await fetch(urlWithAuth, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dealId, companyId })
+      headers: headersWithAuth,
+      body: JSON.stringify(bodyWithAuth)
     });
     
     if (!response.ok) {
@@ -154,10 +181,14 @@ export const api = {
 
   // Update Xero quote
   updateXeroQuote: async (data: { dealId: string; companyId: string; quoteId?: string }) => {
-    const response = await fetch(`${BACKEND_API_BASE_URL}/api/xero/update-quote`, {
+    const urlWithAuth = appendUserAuthToUrl(`${BACKEND_API_BASE_URL}/api/xero/update-quote`);
+    const headersWithAuth = addUserAuthHeaders({ 'Content-Type': 'application/json' });
+    const bodyWithAuth = addUserAuthToBody(data);
+    
+    const response = await fetch(urlWithAuth, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      headers: headersWithAuth,
+      body: JSON.stringify(bodyWithAuth)
     });
     
     if (!response.ok) {

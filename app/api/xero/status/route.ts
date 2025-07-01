@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const pipedriveCompanyId = searchParams.get('pipedriveCompanyId');
+    const userId = searchParams.get('userId');
 
     if (!pipedriveCompanyId) {
       return NextResponse.json(
@@ -18,13 +19,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Build URL with all parameters including userId
+    const backendUrl = new URL(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.XERO_STATUS}`);
+    backendUrl.searchParams.set('pipedriveCompanyId', pipedriveCompanyId);
+    if (userId) {
+      backendUrl.searchParams.set('userId', userId);
+    }
+
     // Call external API for Xero status
-    const response = await fetch(`${EXTERNAL_API_BASE_URL}${EXTERNAL_API_ENDPOINTS.XERO_STATUS}?pipedriveCompanyId=${pipedriveCompanyId}`, {
+    const response = await fetch(backendUrl.toString(), {
       headers: {
         'Content-Type': 'application/json',
         // Forward any cookies or authorization headers
         'Cookie': request.headers.get('cookie') || '',
         'Authorization': request.headers.get('authorization') || '',
+        // Forward user ID header if present
+        'X-User-ID': request.headers.get('x-user-id') || userId || '',
+        'X-Company-ID': request.headers.get('x-company-id') || pipedriveCompanyId || '',
+        'X-User-Email': request.headers.get('x-user-email') || '',
       },
     });
     

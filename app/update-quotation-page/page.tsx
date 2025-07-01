@@ -19,6 +19,7 @@ import {
   getProductUnitPrice
 } from '../utils/quotationUtils';
 import { QuotationDataResponse, ComparisonAnalysis, UpdateQuoteResponse } from '../types/quotation';
+import { getUserAuthData } from '../utils/userAuth';
 
 function UpdateQuotationContent() {
   const searchParams = useSearchParams();
@@ -32,6 +33,14 @@ function UpdateQuotationContent() {
   // Custom hooks
   const toast = useToast();
   const { quotationData, comparisonAnalysis, loading, error, refetch } = useQuotationData(dealId, companyId);
+  
+  // Capture user auth data on page load
+  useEffect(() => {
+    const authData = getUserAuthData();
+    if (authData) {
+      console.log('User auth data available:', authData);
+    }
+  }, []);
 
   // Handle update quote functionality
   const handleUpdateQuote = async () => {
