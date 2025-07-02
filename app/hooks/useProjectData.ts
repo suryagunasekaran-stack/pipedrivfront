@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { ProjectData, CreationResult } from '../types/pipedrive';
 import { API_ENDPOINTS, EXTERNAL_API_ENDPOINTS, ERROR_MESSAGES, BACKEND_API_BASE_URL } from '../constants';
 import { useToast } from './useToastNew';
-import { apiCall } from '../utils/apiClient';
+import { apiCall, api } from '../utils/apiClient';
 import { appendUserAuthToUrl, addUserAuthHeaders } from '../utils/userAuth';
 
 interface UseProjectDataProps {
@@ -114,12 +114,9 @@ export function useProjectCreation({
     const loadingToastId = toast.loading('Creating project...');
 
     try {
-      const responseData = await apiCall(API_ENDPOINTS.PROJECT_CREATE_FULL, {
-        method: 'POST',
-        body: JSON.stringify({
-          pipedriveDealId: projectData.deal.id,
-          pipedriveCompanyId: companyId,
-        }),
+      const responseData = await api.createFullProject({
+        pipedriveDealId: projectData.deal.id,
+        pipedriveCompanyId: companyId,
       });
 
       const successMsg = responseData.message || `Project ${responseData.projectNumber || ''} created successfully! Redirecting...`;
