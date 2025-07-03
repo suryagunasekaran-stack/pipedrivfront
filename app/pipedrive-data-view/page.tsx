@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import ErrorDisplay from '../components/ErrorDisplay';
+import ApiErrorPage from '../components/ApiErrorPage';
 import XeroConnectionStatus from '../components/XeroConnectionStatus';
 import { usePipedriveData } from '../hooks/usePipedriveData';
 import { useXeroStatus } from '../hooks/useXeroStatus';
@@ -41,7 +42,7 @@ function PipedriveDataViewContent() {
   const router = useRouter();
   
   // Custom hooks for data fetching and state management
-  const { data, loading, error, refetch } = usePipedriveData(dealId, companyId);
+  const { data, loading, error, errorDetails, refetch } = usePipedriveData(dealId, companyId);
   const toast = useToast();
   
   // Capture user auth data on page load
@@ -122,14 +123,37 @@ function PipedriveDataViewContent() {
   }
 
 
+  // Handle error state
+  if (error) {
+    // For API errors with status codes, use the nice error page
+    if (errorDetails?.statusCode) {
+      return (
+        <ApiErrorPage
+          error={{
+            message: error,
+            statusCode: errorDetails.statusCode,
+            details: errorDetails.details || (dealId ? `Deal ID: ${dealId}` : undefined)
+          }}
+          onRetry={() => refetch()}
+        />
+      );
+    }
+    
+    // For other errors, use the standard error display
+    return (
+      <ErrorDisplay 
+        error={error}
+        onRetry={() => refetch()}
+      />
+    );
+  }
+
   // Handle no data state
   if (!data) {
     return (
       <ErrorDisplay 
         error="No data found. Please check your deal ID and company ID."
-        onRetry={() => {
-          refetch();
-        }}
+        onRetry={() => refetch()}
       />
     );
   }

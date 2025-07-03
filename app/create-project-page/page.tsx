@@ -13,6 +13,7 @@ import ProjectCreationMode from '../components/ProjectCreationMode';
 import QuoteExistsPage from '../components/QuoteExistsPage';
 import SimpleLoader from '../components/SimpleLoader';
 import ErrorDisplay from '../components/ErrorDisplay';
+import ApiErrorPage from '../components/ApiErrorPage';
 import { CreationResult } from '../types/pipedrive';
 import { getUserAuthData } from '../utils/userAuth';
 
@@ -32,7 +33,7 @@ function CreateProjectContent() {
   const { data: pipedriveData, loading: pipedriveLoading, error: pipedriveError } = usePipedriveData(dealId, companyId);
 
   // Data fetching for project creation
-  const { projectData, isLoading, error, refetch } = useProjectData({ dealId, companyId });
+  const { projectData, isLoading, error, errorDetails, refetch } = useProjectData({ dealId, companyId });
 
   // Project creation
   const { isCreating, creationResult, createProject, clearResult } = useProjectCreation({
@@ -70,14 +71,44 @@ function CreateProjectContent() {
     return <SimpleLoader />;
   }
 
-  // Error state
+  // Error state - check if it's an API error with status code
   if (error || pipedriveError) {
+    const errorMessage = error || pipedriveError || 'An error occurred';
+    
+    // Check if this is a validation error from the API
+    if (typeof errorMessage === 'string' && errorMessage.includes('Deal validation failed')) {
+      return (
+        <ApiErrorPage
+          error={{
+            title: 'Project Creation Failed',
+            message: errorMessage,
+            statusCode: errorDetails?.statusCode || 400,
+            details: 'Please ensure the deal has both a quote number and quote ID before creating a project.'
+          }}
+          onRetry={() => refetch()}
+        />
+      );
+    }
+    
+    // For API errors with status codes, use the nice error page
+    if (errorDetails?.statusCode) {
+      return (
+        <ApiErrorPage
+          error={{
+            message: errorMessage,
+            statusCode: errorDetails.statusCode,
+            details: errorDetails.details
+          }}
+          onRetry={() => refetch()}
+        />
+      );
+    }
+    
+    // For other errors, use the standard error display
     return (
       <ErrorDisplay
-        error={error || pipedriveError || 'An error occurred'}
-        onRetry={() => {
-          refetch();
-        }}
+        error={errorMessage}
+        onRetry={() => refetch()}
       />
     );
   }

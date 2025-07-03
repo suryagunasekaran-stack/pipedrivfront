@@ -17,6 +17,7 @@ interface UseProjectDataReturn {
   projectData: ProjectData | null;
   isLoading: boolean;
   error: string | null;
+  errorDetails?: { statusCode?: number; details?: string };
   refetch: () => void;
 }
 
@@ -24,6 +25,7 @@ export function useProjectData({ dealId, companyId }: UseProjectDataProps): UseP
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<{ statusCode?: number; details?: string } | undefined>();
   const toast = useToast();
 
   const fetchProjectData = async () => {
@@ -47,6 +49,10 @@ export function useProjectData({ dealId, companyId }: UseProjectDataProps): UseP
     } catch (e: any) {
       const errorMsg = e.message || 'Failed to fetch project data';
       setError(errorMsg);
+      setErrorDetails({
+        statusCode: e.statusCode || e.response?.status,
+        details: e.response?.data?.details
+      });
       toast.error(errorMsg);
     } finally {
       setIsLoading(false);
@@ -61,6 +67,7 @@ export function useProjectData({ dealId, companyId }: UseProjectDataProps): UseP
     projectData,
     isLoading,
     error,
+    errorDetails,
     refetch: fetchProjectData,
   };
 }

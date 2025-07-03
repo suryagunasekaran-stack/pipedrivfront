@@ -95,7 +95,11 @@ export async function apiCall<T = any>(
         errorMessage = data;
       }
       
-      throw new Error(errorMessage);
+      // Create an error with status code
+      const error = new Error(errorMessage) as any;
+      error.statusCode = response.status;
+      error.response = { status: response.status, data };
+      throw error;
     }
 
     // Return the actual data if it's wrapped in a data property, otherwise return the whole response
