@@ -8,7 +8,9 @@ import { EXTERNAL_API_BASE_URL, ERROR_MESSAGES } from '@/app/constants';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pipedriveDealId, pipedriveCompanyId, xeroProjectId } = body;
+    const { pipedriveDealId, pipedriveCompanyId, xeroProjectId, userId } = body;
+    
+    console.log('Received link-existing request body:', body);
 
     // Validate required parameters
     if (!pipedriveDealId || !pipedriveCompanyId || !xeroProjectId) {
@@ -20,6 +22,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Prepare payload for external API
+    const externalApiPayload = {
+      pipedriveDealId,
+      pipedriveCompanyId,
+      xeroProjectId,
+      userId
+    };
+    
+    console.log('Sending to external API:', externalApiPayload);
+    
     // Call external API to link the existing project
     const response = await fetch(
       `${EXTERNAL_API_BASE_URL}/api/project/link-existing`,
@@ -30,11 +42,7 @@ export async function POST(request: NextRequest) {
           'Cookie': request.headers.get('cookie') || '',
           'Authorization': request.headers.get('authorization') || '',
         },
-        body: JSON.stringify({
-          pipedriveDealId,
-          pipedriveCompanyId,
-          xeroProjectId
-        }),
+        body: JSON.stringify(externalApiPayload),
       }
     );
 
