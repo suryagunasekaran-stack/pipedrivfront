@@ -9,6 +9,7 @@ import { useToast } from '../hooks/useToastNew';
 import { API_ENDPOINTS, PROJECT_REDIRECT_DELAY } from '../constants';
 import { calculateProductSummary, calculateProductFinancials } from '../utils/calculations';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { addUserAuthToBody } from '../utils/userAuth';
 
 interface XeroProject {
   projectId: string;
@@ -125,16 +126,20 @@ export default function ProjectCreationMode({
     const loadingToast = toast.loading('Linking project...');
     
     try {
+      const payload = addUserAuthToBody({
+        pipedriveDealId: dealId,
+        pipedriveCompanyId: companyId,
+        xeroProjectId: selectedProject.projectId
+      });
+      
+      console.log('Linking project with payload:', payload);
+      
       const response = await fetch(API_ENDPOINTS.PROJECT_LINK_EXISTING, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          pipedriveDealId: dealId,
-          pipedriveCompanyId: companyId,
-          xeroProjectId: selectedProject.projectId
-        })
+        body: JSON.stringify(payload)
       });
       
       const result = await response.json();
