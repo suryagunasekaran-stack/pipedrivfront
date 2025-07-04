@@ -11,7 +11,7 @@ interface ApiError {
 
 export function useApiError() {
   const [error, setError] = useState<ApiError | null>(null);
-  const { error: showToast } = useToast();
+  const { showToast } = useToast();
 
   const handleApiError = useCallback((error: any, showErrorToast = true) => {
     console.error('API Error:', error);
@@ -47,7 +47,7 @@ export function useApiError() {
     setError(errorInfo);
 
     if (showErrorToast) {
-      showToast(errorInfo.message);
+      showToast('error', 'Error', errorInfo.message);
     }
 
     return errorInfo;
