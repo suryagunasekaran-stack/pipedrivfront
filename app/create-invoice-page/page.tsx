@@ -116,8 +116,7 @@ function CreateInvoiceContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [invoiceCreationResult, setInvoiceCreationResult] = useState<InvoiceCreationResponse | null>(null);
-  const [comments, setComments] = useState<string>('');
-
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
@@ -314,7 +313,6 @@ function CreateInvoiceContent() {
       formData.append('projectNumber', projectData?.projectNumber || '');
       formData.append('companyId', companyId || '');
       formData.append('selectedItems', JSON.stringify(selectedItemsData));
-      formData.append('comments', comments); // Append comments
       
       // Add user auth data to FormData
       if (userAuth) {
@@ -341,7 +339,6 @@ function CreateInvoiceContent() {
         projectNumber: projectData?.projectNumber,
         companyId: companyId,
         selectedItems: selectedItemsData,
-        comments: comments,
         fileCount: successfullyUploadedFiles.length,
         fileNames: successfullyUploadedFiles.map(f => f.file.name),
         userId: userAuth?.userId
@@ -562,12 +559,7 @@ function CreateInvoiceContent() {
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Next Steps</h2>
                 <div className="space-y-3">
                   <button
-                    onClick={() => {
-                      setInvoiceCreationResult(null);
-                      setComments('');
-                      setSelectedItems([]);
-                      setUploadedFiles([]);
-                    }}
+                    onClick={() => setInvoiceCreationResult(null)}
                     className="w-full py-2 px-4 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
                   >
                     Create Another Invoice
@@ -877,29 +869,6 @@ function CreateInvoiceContent() {
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Comments Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Additional Instructions</h2>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="comments" className="block text-sm font-medium text-gray-700 mb-2">
-                    Comments or Special Instructions
-                  </label>
-                  <textarea
-                    id="comments"
-                    rows={4}
-                    value={comments}
-                    onChange={(e) => setComments(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                    placeholder="Enter any special instructions, payment terms, or additional notes for this invoice..."
-                  />
-                  <p className="mt-2 text-xs text-gray-500">
-                    These instructions will be included with the invoice for backend processing
-                  </p>
-                </div>
-              </div>
             </div>
 
             {/* Selected Items Section */}
