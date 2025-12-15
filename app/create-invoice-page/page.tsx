@@ -116,43 +116,10 @@ function CreateInvoiceContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [invoiceCreationResult, setInvoiceCreationResult] = useState<InvoiceCreationResponse | null>(null);
-  
+  const [comments, setComments] = useState<string>('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
-
-  // Check if deal totals match quote totals
-  const totalsMatch = projectData ?
-    Math.abs(projectData.summary.totalDealsValue - projectData.summary.totalQuotesValue) < 0.01 :
-    true;
-
-  // Debug logging to see what values we're getting from backend
-  useEffect(() => {
-    if (projectData) {
-      console.log('Project Data Summary:', {
-        totalDealsValue: projectData.summary.totalDealsValue,
-        totalQuotesValue: projectData.summary.totalQuotesValue,
-        currency: projectData.summary.currency,
-        totalsMatch: totalsMatch,
-        difference: projectData.summary.totalQuotesValue - projectData.summary.totalDealsValue
-      });
-      console.log('Individual Deals:', projectData.deals.map((d: Deal) => ({
-        id: d.id,
-        title: d.title,
-        value: d.value,
-        currency: d.currency
-      })));
-      console.log('Individual Quotes:', projectData.quotes.map((q: Quote) => ({
-        QuoteID: q.QuoteID,
-        QuoteNumber: q.QuoteNumber,
-        Total: q.Total,
-        LineItems: q.LineItems.map((li: LineItem) => ({
-          Description: li.Description,
-          LineAmount: li.LineAmount,
-          TaxAmount: li.TaxAmount
-        }))
-      })));
-    }
-  }, [projectData, totalsMatch]);
 
   // Auto-expand all quotes when project data is loaded
   useEffect(() => {
@@ -210,7 +177,7 @@ function CreateInvoiceContent() {
   // Handle file selection
   const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    
+
     if (files.length === 0) return;
 
     const newFiles: UploadedFile[] = [];
@@ -246,9 +213,9 @@ function CreateInvoiceContent() {
         uploadStatus: 'success' as const,
         uploadMessage: 'Upload successful'
       }));
-      
+
       setUploadedFiles(prev => [...prev, ...successfulFiles]);
-      
+
       // Show success messages
       successfulFiles.forEach((uploadedFile) => {
         toast.success(`${uploadedFile.file.name} uploaded successfully`);
@@ -279,19 +246,13 @@ function CreateInvoiceContent() {
 
   // Generate invoice payload
   const generateInvoicePayload = async () => {
-    // Check if totals match before allowing invoice generation
-    if (!totalsMatch) {
-      toast.error('Cannot generate invoice: Deal and quote totals must match. Please update quote before invoicing.');
-      return;
-    }
-
     if (selectedItems.length === 0) {
       toast.error('Please select at least one line item');
       return;
     }
 
     setIsGenerating(true);
-    
+
     const selectedItemsData = selectedItems.map(item => ({
       lineItemId: item.lineItem.LineItemID,
       description: item.lineItem.Description,
@@ -307,13 +268,14 @@ function CreateInvoiceContent() {
     try {
       // Get user auth data
       const userAuth = getUserAuthData();
-      
+
       // Always use FormData for consistency
       const formData = new FormData();
       formData.append('projectNumber', projectData?.projectNumber || '');
       formData.append('companyId', companyId || '');
       formData.append('selectedItems', JSON.stringify(selectedItemsData));
-      
+      formData.append('comments', comments); // Append comments
+
       // Add user auth data to FormData
       if (userAuth) {
         if (userAuth.userId) {
@@ -326,7 +288,7 @@ function CreateInvoiceContent() {
           formData.append('userName', userAuth.userName);
         }
       }
-      
+
       // Filter for successfully uploaded files and append them
       const successfullyUploadedFiles = uploadedFiles.filter(uf => uf.uploadStatus === 'success');
       if (successfullyUploadedFiles.length > 0) {
@@ -339,6 +301,7 @@ function CreateInvoiceContent() {
         projectNumber: projectData?.projectNumber,
         companyId: companyId,
         selectedItems: selectedItemsData,
+        comments: comments,
         fileCount: successfullyUploadedFiles.length,
         fileNames: successfullyUploadedFiles.map(f => f.file.name),
         userId: userAuth?.userId
@@ -362,12 +325,12 @@ function CreateInvoiceContent() {
 
       const result: InvoiceCreationResponse = await response.json();
       console.log('Invoice creation response:', result);
-      
+
       // Set the success result to display success UI
       setInvoiceCreationResult(result);
-      
+
       toast.success('Invoice created successfully!');
-      
+
     } catch (error) {
       console.error('Failed to create invoice:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create invoice');
@@ -392,9 +355,9 @@ function CreateInvoiceContent() {
   // Error state
   if (error) {
     return (
-      <ErrorDisplay 
-        error={error} 
-        onRetry={() => refetch()} 
+      <ErrorDisplay
+        error={error}
+        onRetry={() => refetch()}
       />
     );
   }
@@ -402,7 +365,7 @@ function CreateInvoiceContent() {
   // No data state
   if (!projectData) {
     return (
-      <ErrorDisplay 
+      <ErrorDisplay
         error="No project data available"
         onRetry={() => window.location.reload()}
       />
@@ -478,7 +441,7 @@ function CreateInvoiceContent() {
                         <div>
                           <p className="text-sm text-gray-500">Status</p>
                           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            invoice.status === 'DRAFT' 
+                            invoice.status === 'DRAFT'
                               ? 'bg-yellow-100 text-yellow-800'
                               : invoice.status === 'SENT'
                               ? 'bg-blue-100 text-blue-800'
@@ -559,7 +522,12 @@ function CreateInvoiceContent() {
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Next Steps</h2>
                 <div className="space-y-3">
                   <button
-                    onClick={() => setInvoiceCreationResult(null)}
+                    onClick={() => {
+                      setInvoiceCreationResult(null);
+                      setComments('');
+                      setSelectedItems([]);
+                      setUploadedFiles([]);
+                    }}
                     className="w-full py-2 px-4 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
                   >
                     Create Another Invoice
@@ -597,50 +565,13 @@ function CreateInvoiceContent() {
         </div>
       </div>
 
-      {/* Prominent Warning Banner for Total Mismatch */}
-      {projectData && !totalsMatch && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                {/* Warning Icon with animation */}
-                <svg className="h-8 w-8 text-red-400 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-4 flex-1">
-                <h3 className="text-lg font-bold text-red-800">
-                  Total Mismatch: Please update quote before invoicing
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p className="font-medium">
-                    Deals Total: {formatCurrency(projectData.summary.totalDealsValue, projectData.summary.currency)} |
-                    Quotes Total: {formatCurrency(projectData.summary.totalQuotesValue, projectData.summary.currency)}
-                  </p>
-                  <p className="mt-1">
-                    The deal and quote totals must match before you can generate an invoice. Please update the quote to match the deal value.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-6">
             {/* Project Overview */}
-            <div className={`bg-white rounded-lg shadow-sm border ${!totalsMatch ? 'border-red-400 border-2' : 'border-gray-200'} p-6`}>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                Project Overview
-                {!totalsMatch && (
-                  <span className="ml-2 text-sm font-normal text-red-600">
-                    (Totals Mismatch)
-                  </span>
-                )}
-              </h2>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Project Overview</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Project Number</p>
@@ -650,29 +581,15 @@ function CreateInvoiceContent() {
                   <p className="text-sm text-gray-500">Total Deals</p>
                   <p className="text-lg font-semibold text-gray-900">{projectData.summary.totalDeals}</p>
                 </div>
-                <div className={!totalsMatch ? 'p-2 bg-red-50 rounded-md border border-red-200' : ''}>
-                  <div className="flex items-center">
-                    <p className="text-sm text-gray-500">Deals Value</p>
-                    {!totalsMatch && (
-                      <svg className="w-4 h-4 text-red-500 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className={`text-lg font-semibold ${!totalsMatch ? 'text-red-700' : 'text-gray-900'}`}>
+                <div>
+                  <p className="text-sm text-gray-500">Deals Value</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {formatCurrency(projectData.summary.totalDealsValue, projectData.summary.currency)}
                   </p>
                 </div>
-                <div className={!totalsMatch ? 'p-2 bg-red-50 rounded-md border border-red-200' : ''}>
-                  <div className="flex items-center">
-                    <p className="text-sm text-gray-500">Quotes Value</p>
-                    {!totalsMatch && (
-                      <svg className="w-4 h-4 text-red-500 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className={`text-lg font-semibold ${!totalsMatch ? 'text-red-700' : 'text-gray-900'}`}>
+                <div>
+                  <p className="text-sm text-gray-500">Quotes Value</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {formatCurrency(projectData.summary.totalQuotesValue, projectData.summary.currency)}
                   </p>
                 </div>
@@ -718,12 +635,12 @@ function CreateInvoiceContent() {
                       className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center space-x-3">
-                        <svg 
+                        <svg
                           className={`w-5 h-5 text-gray-400 transition-transform ${
                             expandedQuotes.has(quote.QuoteID) ? 'rotate-90' : ''
-                          }`} 
-                          fill="none" 
-                          stroke="currentColor" 
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -748,7 +665,7 @@ function CreateInvoiceContent() {
                           // For demo purposes, associate with the first deal
                           const associatedDeal = projectData.deals[0];
                           const isSelected = isLineItemSelected(lineItem, quote.QuoteID);
-                          
+
                           return (
                             <div
                               key={`${quote.QuoteID}-${itemIndex}`}
@@ -787,7 +704,7 @@ function CreateInvoiceContent() {
             {/* File Upload Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Job Reports and Other Relevant Documents</h2>
-              
+
               <div className="mb-4">
                 <input
                   ref={fileInputRef}
@@ -874,7 +791,7 @@ function CreateInvoiceContent() {
             {/* Selected Items Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Selected Items</h2>
-              
+
               {selectedItems.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-8">No items selected</p>
               ) : (
@@ -925,23 +842,11 @@ function CreateInvoiceContent() {
 
               {/* Actions */}
               <div className="mt-6 space-y-3">
-                {/* Show error message if totals don't match */}
-                {!totalsMatch && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      <span>Invoice generation disabled: Totals must match</span>
-                    </div>
-                  </div>
-                )}
                 <button
                   onClick={generateInvoicePayload}
-                  disabled={selectedItems.length === 0 || isGenerating || !totalsMatch}
-                  title={!totalsMatch ? 'Invoice generation disabled: Deal and quote totals must match' : ''}
+                  disabled={selectedItems.length === 0 || isGenerating}
                   className={`w-full py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    selectedItems.length === 0 || isGenerating || !totalsMatch
+                    selectedItems.length === 0 || isGenerating
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
