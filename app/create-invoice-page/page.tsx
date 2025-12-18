@@ -788,6 +788,29 @@ function CreateInvoiceContent() {
               )}
             </div>
 
+            {/* Comments Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Additional Instructions</h2>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="comments" className="block text-sm font-medium text-gray-700 mb-2">
+                    Comments or Special Instructions
+                  </label>
+                  <textarea
+                    id="comments"
+                    rows={4}
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    placeholder="Enter any special instructions, payment terms, or additional notes for this invoice..."
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    These instructions will be included with the invoice for backend processing
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Selected Items Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Selected Items</h2>
