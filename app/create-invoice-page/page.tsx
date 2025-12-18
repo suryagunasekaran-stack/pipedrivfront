@@ -11,6 +11,17 @@ import { BACKEND_API_BASE_URL } from '../constants';
 import { getUserAuthData, appendUserAuthToUrl, addUserAuthHeaders } from '../utils/userAuth';
 
 // Type definitions
+interface Product {
+  id: number;
+  product_id: number;
+  name: string;
+  item_price: number;
+  quantity: number;
+  sum: number;
+  currency?: string;
+  [key: string]: any; // Allow for additional fields
+}
+
 interface Deal {
   id: number;
   title: string;
@@ -20,9 +31,11 @@ interface Deal {
   status: string;
   customFields: {
     abc123_project_number: string;
+    [key: string]: string; // Allow for dynamic custom field keys
   };
   org_name: string;
   person_name: string;
+  products?: Product[]; // Products from Pipedrive
 }
 
 interface LineItem {
@@ -113,6 +126,7 @@ function CreateInvoiceContent() {
 
   const [selectedItems, setSelectedItems] = useState<SelectedLineItem[]>([]);
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
+  const [expandedDeals, setExpandedDeals] = useState<Set<number>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [invoiceCreationResult, setInvoiceCreationResult] = useState<InvoiceCreationResponse | null>(null);
@@ -128,6 +142,13 @@ function CreateInvoiceContent() {
     }
   }, [projectData]);
 
+  // Auto-expand all deals when project data is loaded
+  useEffect(() => {
+    if (projectData?.deals) {
+      setExpandedDeals(new Set(projectData.deals.map((d: Deal) => d.id)));
+    }
+  }, [projectData]);
+
   // Toggle quote expansion
   const toggleQuoteExpansion = (quoteId: string) => {
     const newExpanded = new Set(expandedQuotes);
@@ -139,13 +160,30 @@ function CreateInvoiceContent() {
     setExpandedQuotes(newExpanded);
   };
 
+  // Toggle deal expansion
+  const toggleDealExpansion = (dealId: number) => {
+    const newExpanded = new Set(expandedDeals);
+    if (newExpanded.has(dealId)) {
+      newExpanded.delete(dealId);
+    } else {
+      newExpanded.add(dealId);
+    }
+    setExpandedDeals(newExpanded);
+  };
+
   // Toggle line item selection
   const toggleLineItemSelection = (lineItem: LineItem, quote: Quote, deal: Deal) => {
+    // Defensive check: ensure deal exists and has required properties
+    if (!deal || !deal.id || !deal.title) {
+      console.error('Cannot toggle line item selection: deal is missing or invalid', { deal, lineItem, quote });
+      toast.error('Unable to select item: deal information is missing');
+      return;
+    }
+
     const isSelected = selectedItems.some(
       item => item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quote.QuoteID
     );
 
-    //fake
     if (isSelected) {
       setSelectedItems(selectedItems.filter(
         item => !(item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quote.QuoteID)
@@ -598,24 +636,60 @@ function CreateInvoiceContent() {
 
             {/* Deals Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Deals</h2>
-              <div className="space-y-3">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Deals & Products</h2>
+              <div className="space-y-4">
                 {projectData.deals.map((deal: Deal) => (
-                  <div key={deal.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900">{deal.title}</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {deal.org_name} • {deal.person_name}
-                        </p>
+                  <div key={deal.id} className="border border-gray-200 rounded-lg">
+                    {/* Deal Header */}
+                    <button
+                      onClick={() => toggleDealExpansion(deal.id)}
+                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform ${
+                            expandedDeals.has(deal.id) ? 'rotate-90' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-gray-900">{deal.title}</p>
+                          <p className="text-xs text-gray-500">{deal.org_name} • {deal.person_name}</p>
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
                           {formatCurrency(deal.value, deal.currency)}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">Deal #{deal.id}</p>
+                        <p className="text-xs text-gray-500">Deal #{deal.id}</p>
                       </div>
-                    </div>
+                    </button>
+
+                    {/* Products */}
+                    {expandedDeals.has(deal.id) && deal.products && deal.products.length > 0 && (
+                      <div className="border-t border-gray-200">
+                        {deal.products.map((product: Product, productIndex: number) => (
+                          <div
+                            key={`product-${product.id}-${productIndex}`}
+                            className="px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-900">{product.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {product.quantity} × {formatCurrency(product.item_price, deal.currency || projectData.summary.currency)} = {formatCurrency(product.sum || (product.item_price * product.quantity), deal.currency || projectData.summary.currency)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500">Product ID: {product.product_id}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -661,23 +735,38 @@ function CreateInvoiceContent() {
                     {/* Line Items */}
                     {expandedQuotes.has(quote.QuoteID) && (
                       <div className="border-t border-gray-200">
+                        {(!projectData.deals || projectData.deals.length === 0) && (
+                          <div className="px-4 py-3 bg-yellow-50 border-l-4 border-yellow-400">
+                            <p className="text-sm text-yellow-800">
+                              <strong>Warning:</strong> No deals available. Line items cannot be selected until deals are associated with this project.
+                            </p>
+                          </div>
+                        )}
                         {quote.LineItems.map((lineItem: LineItem, itemIndex: number) => {
-                          // For demo purposes, associate with the first deal
-                          const associatedDeal = projectData.deals[0];
+                          // Associate with the first deal, or use a fallback if no deals exist
+                          const associatedDeal = projectData.deals && projectData.deals.length > 0 
+                            ? projectData.deals[0] 
+                            : null;
                           const isSelected = isLineItemSelected(lineItem, quote.QuoteID);
+                          const canSelect = associatedDeal !== null;
 
                           return (
                             <div
                               key={`${quote.QuoteID}-${itemIndex}`}
-                              className={`px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors ${
-                                isSelected ? 'bg-blue-50' : ''
+                              className={`px-4 py-3 flex items-center space-x-3 transition-colors ${
+                                isSelected ? 'bg-blue-50' : canSelect ? 'hover:bg-gray-50' : 'opacity-60'
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isSelected}
-                                onChange={() => toggleLineItemSelection(lineItem, quote, associatedDeal)}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                disabled={!canSelect}
+                                onChange={() => {
+                                  if (associatedDeal) {
+                                    toggleLineItemSelection(lineItem, quote, associatedDeal);
+                                  }
+                                }}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                               />
                               <div className="flex-1">
                                 <p className="text-sm text-gray-900">{lineItem.Description}</p>
@@ -686,7 +775,7 @@ function CreateInvoiceContent() {
                                 </p>
                               </div>
                               <div className="text-right">
-                                <p className="text-xs text-gray-500">Code: {lineItem.ItemCode}</p>
+                                <p className="text-xs text-gray-500">{lineItem.ItemCode}</p>
                               </div>
                             </div>
                           );
