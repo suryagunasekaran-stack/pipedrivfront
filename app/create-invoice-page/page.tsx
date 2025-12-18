@@ -131,6 +131,7 @@ function CreateInvoiceContent() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [invoiceCreationResult, setInvoiceCreationResult] = useState<InvoiceCreationResponse | null>(null);
   const [comments, setComments] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
@@ -212,10 +213,8 @@ function CreateInvoiceContent() {
     setSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
-  // Handle file selection
-  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-
+  // Process files (shared logic for both drag-drop and file input)
+  const processFiles = (files: File[]) => {
     if (files.length === 0) return;
 
     const newFiles: UploadedFile[] = [];
@@ -259,11 +258,44 @@ function CreateInvoiceContent() {
         toast.success(`${uploadedFile.file.name} uploaded successfully`);
       });
     }
+  };
+
+  // Handle file selection
+  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    processFiles(files);
 
     // Clear the input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // Handle drag and drop
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files || []);
+    processFiles(files);
   };
 
   // Remove uploaded file
@@ -610,23 +642,23 @@ function CreateInvoiceContent() {
             {/* Project Overview */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Project Overview</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Project Number</p>
+                  <p className="text-sm text-gray-500 mb-1">Project Number</p>
                   <p className="text-lg font-semibold text-gray-900">{projectData.projectNumber}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Total Deals</p>
+                  <p className="text-sm text-gray-500 mb-1">Total Deals</p>
                   <p className="text-lg font-semibold text-gray-900">{projectData.summary.totalDeals}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Deals Value</p>
+                  <p className="text-sm text-gray-500 mb-1">Deals Value</p>
                   <p className="text-lg font-semibold text-gray-900">
                     {formatCurrency(projectData.summary.totalDealsValue, projectData.summary.currency)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Quotes Value</p>
+                  <p className="text-sm text-gray-500 mb-1">Quotes Value</p>
                   <p className="text-lg font-semibold text-gray-900">
                     {formatCurrency(projectData.summary.totalQuotesValue, projectData.summary.currency)}
                   </p>
@@ -728,7 +760,15 @@ function CreateInvoiceContent() {
                         <p className="text-sm font-medium text-gray-900">
                           {formatCurrency(quote.Total, projectData.summary.currency)}
                         </p>
-                        <p className="text-xs text-gray-500">{quote.Status}</p>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
+                          quote.Status === 'DRAFT' 
+                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                            : quote.Status === 'ACCEPTED'
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-gray-100 text-gray-800 border border-gray-200'
+                        }`}>
+                          {quote.Status}
+                        </span>
                       </div>
                     </button>
 
@@ -753,8 +793,12 @@ function CreateInvoiceContent() {
                           return (
                             <div
                               key={`${quote.QuoteID}-${itemIndex}`}
-                              className={`px-4 py-3 flex items-center space-x-3 transition-colors ${
-                                isSelected ? 'bg-blue-50' : canSelect ? 'hover:bg-gray-50' : 'opacity-60'
+                              className={`px-4 py-3 flex items-center space-x-3 transition-all duration-200 ${
+                                isSelected 
+                                  ? 'bg-blue-50 border-l-4 border-blue-500 shadow-sm' 
+                                  : canSelect 
+                                  ? 'hover:bg-gray-50 hover:shadow-sm' 
+                                  : 'opacity-60'
                               }`}
                             >
                               <input
@@ -804,18 +848,31 @@ function CreateInvoiceContent() {
                   className="hidden"
                   id="file-upload"
                 />
-                <label
-                  htmlFor="file-upload"
-                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                <div
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    isDragging 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-gray-300 hover:border-blue-400'
+                  }`}
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  Choose Files
-                </label>
-                <p className="mt-2 text-xs text-gray-500 text-center">
-                  PDF, DOC, DOCX, XLS, XLSX, Images (Max 10MB per file)
-                </p>
+                  <label
+                    htmlFor="file-upload"
+                    className="mt-2 block text-sm font-medium text-gray-700 cursor-pointer"
+                  >
+                    <span className="text-blue-600 hover:text-blue-700">Click to upload</span>
+                    <span className="text-gray-500"> or drag and drop</span>
+                  </label>
+                  <p className="mt-1 text-xs text-gray-500">
+                    PDF, DOC, DOCX, XLS, XLSX, Images (Max 10MB per file)
+                  </p>
+                </div>
               </div>
 
               {uploadedFiles.length === 0 ? (
@@ -904,8 +961,34 @@ function CreateInvoiceContent() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Selected Items</h2>
 
+              {/* Sticky Summary Bar */}
+              {selectedItems.length > 0 && (
+                <div className="bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-blue-500 rounded-full px-2.5 py-1 text-xs font-bold">
+                        {selectedItems.length}
+                      </div>
+                      <span className="text-sm font-medium">Items Selected</span>
+                    </div>
+                    <span className="text-lg font-bold">
+                      {formatCurrency(
+                        selectedItems.reduce((sum, item) => sum + item.lineItem.LineAmount, 0),
+                        projectData.summary.currency
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {selectedItems.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">No items selected</p>
+                <div className="text-center py-12">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No items selected</h3>
+                  <p className="mt-1 text-sm text-gray-500">Select line items from quotes to create an invoice</p>
+                </div>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {selectedItems.map((item, index) => (
@@ -976,6 +1059,24 @@ function CreateInvoiceContent() {
           </div>
         </div>
       </div>
+
+      {/* Loading Overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
+            <div className="flex items-center space-x-3">
+              <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <div>
+                <p className="font-medium text-gray-900">Generating Invoice</p>
+                <p className="text-sm text-gray-500">Please wait...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
