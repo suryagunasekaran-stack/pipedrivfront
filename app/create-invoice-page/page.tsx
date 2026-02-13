@@ -53,6 +53,7 @@ interface Quote {
   QuoteNumber: string;
   Status: string;
   Total: number;
+  CurrencyCode?: string;
   Contact: {
     Name: string;
     EmailAddress: string;
@@ -206,6 +207,50 @@ function CreateInvoiceContent() {
     return selectedItems.some(
       item => item.lineItem.LineItemID === lineItem.LineItemID && item.quoteId === quoteId
     );
+  };
+
+  // Toggle select all line items across all quotes
+  const toggleSelectAll = () => {
+    const availableDeal = projectData?.deals && projectData.deals.length > 0 ? projectData.deals[0] : null;
+    if (!availableDeal) return;
+
+    const allSelectableItems: SelectedLineItem[] = [];
+    const filteredQuotes = projectData?.quotes?.filter((q: Quote) => q.Status === 'DRAFT' || q.Status === 'ACCEPTED') || [];
+    filteredQuotes.forEach((quote: Quote) => {
+      quote.LineItems.forEach((lineItem: LineItem) => {
+        allSelectableItems.push({
+          lineItem,
+          quoteId: quote.QuoteID,
+          quoteNumber: quote.QuoteNumber,
+          quoteStatus: quote.Status,
+          dealId: availableDeal.id,
+          dealTitle: availableDeal.title,
+        });
+      });
+    });
+
+    const allSelected = allSelectableItems.length > 0 && allSelectableItems.every(item =>
+      selectedItems.some(s => s.lineItem.LineItemID === item.lineItem.LineItemID && s.quoteId === item.quoteId)
+    );
+
+    if (allSelected) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(allSelectableItems);
+    }
+  };
+
+  // Check if all line items are selected
+  const areAllItemsSelected = (): boolean => {
+    const availableDeal = projectData?.deals && projectData.deals.length > 0 ? projectData.deals[0] : null;
+    if (!availableDeal) return false;
+
+    const filteredQuotes = projectData?.quotes?.filter((q: Quote) => q.Status === 'DRAFT' || q.Status === 'ACCEPTED') || [];
+    let totalItems = 0;
+    for (const quote of filteredQuotes) {
+      totalItems += quote.LineItems.length;
+    }
+    return totalItems > 0 && selectedItems.length === totalItems;
   };
 
   // Remove selected item
@@ -697,7 +742,12 @@ function CreateInvoiceContent() {
                         <p className="text-sm font-medium text-gray-900">
                           {formatCurrency(deal.value, deal.currency)}
                         </p>
-                        <p className="text-xs text-gray-500">Deal #{deal.id}</p>
+                        <div className="flex items-center justify-end space-x-2 mt-1">
+                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600 border border-gray-200">
+                            {deal.currency}
+                          </span>
+                          <p className="text-xs text-gray-500">Deal #{deal.id}</p>
+                        </div>
                       </div>
                     </button>
 
@@ -729,7 +779,20 @@ function CreateInvoiceContent() {
 
             {/* Quotes Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Quotes & Line Items</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium text-gray-900">Quotes & Line Items</h2>
+                {projectData.deals && projectData.deals.length > 0 && (
+                  <label className="flex items-center space-x-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={areAllItemsSelected()}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Select All</span>
+                  </label>
+                )}
+              </div>
               <div className="space-y-4">
                 {projectData.quotes
                   .filter((quote: Quote) => quote.Status === 'DRAFT' || quote.Status === 'ACCEPTED')
@@ -758,17 +821,22 @@ function CreateInvoiceContent() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
-                          {formatCurrency(quote.Total, projectData.summary.currency)}
+                          {formatCurrency(quote.Total, quote.CurrencyCode || projectData.summary.currency)}
                         </p>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
-                          quote.Status === 'DRAFT' 
-                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                            : quote.Status === 'ACCEPTED'
-                            ? 'bg-green-100 text-green-800 border border-green-200'
-                            : 'bg-gray-100 text-gray-800 border border-gray-200'
-                        }`}>
-                          {quote.Status}
-                        </span>
+                        <div className="flex items-center justify-end space-x-2 mt-1">
+                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600 border border-gray-200">
+                            {quote.CurrencyCode || projectData.summary.currency}
+                          </span>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            quote.Status === 'DRAFT'
+                              ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                              : quote.Status === 'ACCEPTED'
+                              ? 'bg-green-100 text-green-800 border border-green-200'
+                              : 'bg-gray-100 text-gray-800 border border-gray-200'
+                          }`}>
+                            {quote.Status}
+                          </span>
+                        </div>
                       </div>
                     </button>
 
